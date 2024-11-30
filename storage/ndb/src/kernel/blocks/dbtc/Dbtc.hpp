@@ -2070,6 +2070,7 @@ class Dbtc : public SimulatedBlock {
   void execKEYINFO20_R(Signal *signal);
   void execROUTE_ORD(Signal *signal);
   // Received signals
+  void execSET_DOMAIN_ID_REQ(Signal* signal);
   void execDUMP_STATE_ORD(Signal *signal);
   void execDBINFO_SCANREQ(Signal *signal);
   void execSEND_PACKED(Signal *signal);

@@ -1101,7 +1101,11 @@ ErrorBundle ErrorCodes[] = {
   { 5067 /* FAILED_SET_HOSTNAME_REQUEST */, DMEC, AE,
     "Data nodes failed to set new hostname"},
   { 5068 /* FAILED_DEACTIVATE_REQUEST */, DMEC, AE,
-    "Data nodes failed Deactivate Request"}
+    "Data nodes failed Deactivate Request"},
+  { 5069 /* FAILED_SET_DOMAIN_ID_REQUEST */, DMEC, AE,
+    "Data nodes failed Set Location_Domain_Id Request"},
+  { 1120, DMEC, AE,
+    "Set Location_Domain_Id Request failed, busy state"}
 };
 
 static

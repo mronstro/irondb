@@ -28,7 +28,12 @@
 
 #define JAM_FILE_ID 483
 
-DbspjProxy::DbspjProxy(Block_context &ctx) : DbgdmProxy(DBSPJ, ctx) {}
+DbspjProxy::DbspjProxy(Block_context &ctx) : DbgdmProxy(DBSPJ, ctx)
+{
+  // GSN_SET_DOMAIN_ID_REQ
+  addRecSignal(GSN_SET_DOMAIN_ID_REQ, &DbspjProxy::execSET_DOMAIN_ID_REQ);
+  addRecSignal(GSN_SET_DOMAIN_ID_CONF, &DbspjProxy::execSET_DOMAIN_ID_CONF);
+}
 
 DbspjProxy::~DbspjProxy() {}
 
@@ -36,4 +41,67 @@ SimulatedBlock *DbspjProxy::newWorker(Uint32 instanceNo) {
   return new Dbspj(m_ctx, instanceNo);
 }
 
+// GSN_SET_DOMAIN_ID_REQ
+
+void
+DbspjProxy::execSET_DOMAIN_ID_REQ(Signal* signal)
+{
+  jam();
+  Ss_SET_DOMAIN_ID_REQ& ss = ssSeize<Ss_SET_DOMAIN_ID_REQ>(1);
+  memcpy(&ss.m_req,
+         signal->getDataPtr(),
+         sizeof(SetDomainIdReq));
+  sendREQ(signal, ss);
+}
+
+void
+DbspjProxy::sendSET_DOMAIN_ID_REQ(Signal* signal, Uint32 ssId, SectionHandle*)
+{
+  SetDomainIdReq* const req = (SetDomainIdReq*)signal->getDataPtrSend();
+  jam();
+  Ss_SET_DOMAIN_ID_REQ& ss = ssFind<Ss_SET_DOMAIN_ID_REQ>(ssId);
 BLOCK_FUNCTIONS(DbspjProxy)
+  req->senderId = ssId;
+  req->senderRef = reference();
+  req->changeNodeId = ss.m_req.changeNodeId;
+  req->locationDomainId = ss.m_req.locationDomainId;
+  sendSignal(workerRef(ss.m_worker),
+             GSN_SET_DOMAIN_ID_REQ,
+             signal,
+             SetDomainIdReq::SignalLength,
+             JBB);
+}
+
+void
+DbspjProxy::execSET_DOMAIN_ID_CONF(Signal* signal)
+{
+  SetDomainIdConf* const conf = (SetDomainIdConf*)signal->getDataPtr();
+  jam();
+  Uint32 ssId = conf->senderId;
+  Ss_SET_DOMAIN_ID_REQ& ss = ssFind<Ss_SET_DOMAIN_ID_REQ>(ssId);
+  recvCONF(signal, ss);
+}
+
+void
+DbspjProxy::sendSET_DOMAIN_ID_CONF(Signal* signal, Uint32 ssId)
+{
+  jam();
+  Ss_SET_DOMAIN_ID_REQ& ss = ssFind<Ss_SET_DOMAIN_ID_REQ>(ssId);
+
+  if (!lastReply(ss))
+  {
+    jam();
+    return;
+  }
+  SetDomainIdConf* const conf = (SetDomainIdConf*)signal->getDataPtrSend();
+  conf->senderId = ss.m_req.senderId;
+  conf->senderRef = reference();
+  conf->changeNodeId = ss.m_req.changeNodeId;
+  conf->locationDomainId = ss.m_req.locationDomainId;
+  sendSignal(QMGR_REF,
+             GSN_SET_DOMAIN_ID_CONF,
+             signal,
+             SetDomainIdConf::SignalLength,
+             JBB);
+  ssRelease<Ss_SET_DOMAIN_ID_REQ>(ssId);
+}

@@ -1,0 +1,67 @@
+-- source include/have_ndb.inc
+-- source have_ndb_error_insert.inc
+--exec $NDB_MGM --execute "1 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "2 LOCATION_DOMAIN_ID 2"
+--exec $NDB_MGM --execute "3 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "4 LOCATION_DOMAIN_ID 2"
+--exec $NDB_MGM --execute "16 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "32 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "48 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "49 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "63 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "127 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "192 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "228 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "229 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "230 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "231 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "232 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "233 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "255 LOCATION_DOMAIN_ID 1"
+create table t1 (a int not null primary key) engine ndb;
+create table t2 (b int not null primary key) engine ndb;
+insert into t1 values (0),(1),(2),(3);
+insert into t2 values (0),(1),(2),(3);
+select * from t1;
+--exec $NDB_MGM --execute "2 ERROR 8121"
+--exec $NDB_MGM --execute "4 ERROR 8121"
+select a from t1 order by a;
+select t1.a,t2.b from t1, t2 WHERE t1.a = t2.b order by t1.a;
+--exec $NDB_MGM --execute "2 ERROR 0"
+--exec $NDB_MGM --execute "4 ERROR 0"
+--exec $NDB_MGM --execute "2 ERROR 5079"
+--exec $NDB_MGM --execute "4 ERROR 5079"
+select a from t1 order by a;
+select t1.a,t2.b from t1, t2 WHERE t1.a = t2.b order by t1.a;
+--exec $NDB_MGM --execute "2 ERROR 0"
+--exec $NDB_MGM --execute "4 ERROR 0"
+--exec $NDB_MGM --execute "1 LOCATION_DOMAIN_ID 2"
+--exec $NDB_MGM --execute "2 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "3 LOCATION_DOMAIN_ID 2"
+--exec $NDB_MGM --execute "4 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "1 ERROR 8121"
+--exec $NDB_MGM --execute "3 ERROR 8121"
+select a from t1 order by a;
+select t1.a,t2.b from t1, t2 WHERE t1.a = t2.b order by t1.a;
+--exec $NDB_MGM --execute "1 ERROR 0"
+--exec $NDB_MGM --execute "3 ERROR 0"
+drop table t1;
+drop table t2;
+--exec $NDB_MGM --execute "1 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "2 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "3 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "4 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "16 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "32 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "48 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "49 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "63 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "127 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "192 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "228 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "229 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "230 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "231 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "232 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "233 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "255 LOCATION_DOMAIN_ID 0"

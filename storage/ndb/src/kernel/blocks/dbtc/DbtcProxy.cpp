@@ -34,11 +34,15 @@ DbtcProxy::DbtcProxy(Block_context &ctx) : DbgdmProxy(DBTC, ctx) {
   // GSN_TCSEIZEREQ
   addRecSignal(GSN_TCSEIZEREQ, &DbtcProxy::execTCSEIZEREQ);
 
+  // GSN_SET_DOMAIN_ID_REQ
+  addRecSignal(GSN_SET_DOMAIN_ID_REQ, &DbtcProxy::execSET_DOMAIN_ID_REQ);
+  addRecSignal(GSN_SET_DOMAIN_ID_CONF, &DbtcProxy::execSET_DOMAIN_ID_CONF);
+
   // GSN_TCGETOPSIZEREQ
   addRecSignal(GSN_TCGETOPSIZEREQ, &DbtcProxy::execTCGETOPSIZEREQ);
   addRecSignal(GSN_TCGETOPSIZECONF, &DbtcProxy::execTCGETOPSIZECONF);
 
-  // GSN_TCGETOPSIZEREQ
+  // GSN_TC_CLOPSIZEREQ
   addRecSignal(GSN_TC_CLOPSIZEREQ, &DbtcProxy::execTC_CLOPSIZEREQ);
   addRecSignal(GSN_TC_CLOPSIZECONF, &DbtcProxy::execTC_CLOPSIZECONF);
 
@@ -209,6 +213,71 @@ void DbtcProxy::execTCSEIZEREQ(Signal *signal) {
                signal->getLength(), JBB);
     m_tc_seize_req_instance = (m_tc_seize_req_instance + 1) % c_workers;
   }
+}
+
+// GSN_SET_DOMAIN_ID_REQ
+
+void
+DbtcProxy::execSET_DOMAIN_ID_REQ(Signal* signal)
+{
+  jam();
+  Ss_SET_DOMAIN_ID_REQ& ss = ssSeize<Ss_SET_DOMAIN_ID_REQ>(1);
+  memcpy(&ss.m_req,
+         signal->getDataPtr(),
+         sizeof(SetDomainIdReq));
+  sendREQ(signal, ss);
+}
+
+void
+DbtcProxy::sendSET_DOMAIN_ID_REQ(Signal* signal, Uint32 ssId, SectionHandle*)
+{
+  SetDomainIdReq* const req = (SetDomainIdReq*)signal->getDataPtrSend();
+  jam();
+  Ss_SET_DOMAIN_ID_REQ& ss = ssFind<Ss_SET_DOMAIN_ID_REQ>(ssId);
+
+  req->senderId = ssId;
+  req->senderRef = reference();
+  req->changeNodeId = ss.m_req.changeNodeId;
+  req->locationDomainId = ss.m_req.locationDomainId;
+  sendSignal(workerRef(ss.m_worker),
+             GSN_SET_DOMAIN_ID_REQ,
+             signal,
+             SetDomainIdReq::SignalLength,
+             JBB);
+}
+
+void
+DbtcProxy::execSET_DOMAIN_ID_CONF(Signal* signal)
+{
+  SetDomainIdConf* const conf = (SetDomainIdConf*)signal->getDataPtr();
+  jam();
+  Uint32 ssId = conf->senderId;
+  Ss_SET_DOMAIN_ID_REQ& ss = ssFind<Ss_SET_DOMAIN_ID_REQ>(ssId);
+  recvCONF(signal, ss);
+}
+
+void
+DbtcProxy::sendSET_DOMAIN_ID_CONF(Signal* signal, Uint32 ssId)
+{
+  jam();
+  Ss_SET_DOMAIN_ID_REQ& ss = ssFind<Ss_SET_DOMAIN_ID_REQ>(ssId);
+
+  if (!lastReply(ss))
+  {
+    jam();
+    return;
+  }
+  SetDomainIdConf* const conf = (SetDomainIdConf*)signal->getDataPtrSend();
+  conf->senderId = ss.m_req.senderId;
+  conf->senderRef = reference();
+  conf->changeNodeId = ss.m_req.changeNodeId;
+  conf->locationDomainId = ss.m_req.locationDomainId;
+  sendSignal(QMGR_REF,
+             GSN_SET_DOMAIN_ID_CONF,
+             signal,
+             SetDomainIdConf::SignalLength,
+             JBB);
+  ssRelease<Ss_SET_DOMAIN_ID_REQ>(ssId);
 }
 
 // GSN_TCGETOPSIZEREQ

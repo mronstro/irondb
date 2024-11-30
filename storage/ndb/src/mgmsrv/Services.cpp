@@ -275,6 +275,10 @@ const ParserRow<MgmApiSession> commands[] = {
 
     MGM_CMD("get mgm nodeid", &MgmApiSession::get_mgm_nodeid, "", &Basic),
 
+    MGM_CMD("set_location_domain_id", &MgmApiSession::set_location_domain_id, "", &Basic),
+      MGM_ARG("node", Int, Mandatory, "node"),
+      MGM_ARG("new_location_domain_id", Int, Mandatory, "new location_domain_id"),
+
     MGM_CMD("set_hostname", &MgmApiSession::set_hostname, "", &Basic),
     MGM_ARG("node", Int, Mandatory, "node"),
     MGM_ARG("new_hostname", String, Mandatory, "new hostname"),
@@ -1569,6 +1573,34 @@ MgmApiSession::get_mgm_nodeid(Parser<MgmApiSession>::Context &,
   m_output->println("get mgm nodeid reply");
   m_output->println("result: Ok");
   m_output->println("nodeid: %u", node_id);
+  m_output->println("%s", "");
+}
+
+void
+MgmApiSession::set_location_domain_id(Parser<MgmApiSession>::Context &,
+                                      Properties const &args)
+{
+  Uint32 node;
+  Uint32 new_location_domain_id;
+
+  bool arg1 = args.get("node", &node);
+  bool arg2 = args.get("new_location_domain_id", &new_location_domain_id);
+  int result;
+  if (arg1 && arg2)
+  {
+    result = m_mgmsrv.set_location_domain_id_request(
+      node, new_location_domain_id);
+  }
+  else
+  {
+    result = INCORRECT_MGM_COMMAND;
+  }
+
+  m_output->println("set_location_domain_id reply");
+  if(result != 0)
+    m_output->println("result: %s", get_error_text(result));
+  else
+    m_output->println("result: Ok");
   m_output->println("%s", "");
 }
 

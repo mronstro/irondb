@@ -533,6 +533,7 @@ Dbtc::Dbtc(Block_context& ctx, Uint32 instanceNo):
   addRecSignal(GSN_RATE_OVERLOAD_REP, &Dbtc::execRATE_OVERLOAD_REP);
   addRecSignal(GSN_QUOTA_OVERLOAD_REP, &Dbtc::execQUOTA_OVERLOAD_REP);
 
+  addRecSignal(GSN_SET_DOMAIN_ID_REQ, &Dbtc::execSET_DOMAIN_ID_REQ);
   addRecSignal(GSN_DUMP_STATE_ORD, &Dbtc::execDUMP_STATE_ORD);
   addRecSignal(GSN_DBINFO_SCANREQ, &Dbtc::execDBINFO_SCANREQ);
   addRecSignal(GSN_SEND_PACKED, &Dbtc::execSEND_PACKED, true);

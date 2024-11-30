@@ -49,6 +49,7 @@
 #include <signaldata/TcKeyConf.hpp>
 #include <signaldata/TcKeyRef.hpp>
 #include <signaldata/TransIdAI.hpp>
+#include <signaldata/SetDomainId.hpp>
 
 #include <Bitmask.hpp>
 #include <EventLogger.hpp>
@@ -751,6 +752,31 @@ void Dbspj::execREAD_NODESCONF(Signal *signal) {
   }
   ndb_mgm_destroy_iterator(p_iter);
   sendSTTORRY(signal);
+}
+
+void Dbspj::execSET_DOMAIN_ID_REQ(Signal *signal) {
+  jamEntry();
+  const SetDomainIdReq* const req =
+    (const SetDomainIdReq *)signal->getDataPtr();
+  Uint32 senderId = req->senderId;
+  BlockReference senderRef = req->senderRef;
+  NodeId changeNodeId = req->changeNodeId;
+  Uint32 locationDomainId = req->locationDomainId;
+
+  /* Change the location domain id of the changeNodeId */
+  m_location_domain_id[changeNodeId] = locationDomainId;
+
+  /* Send response back, this should never fail, so always CONF */
+  SetDomainIdConf* const conf = (SetDomainIdConf*)signal->getDataPtrSend();
+  conf->senderId = senderId;
+  conf->senderRef = reference();
+  conf->changeNodeId = changeNodeId;
+  conf->locationDomainId = locationDomainId;
+  sendSignal(senderRef,
+             GSN_SET_DOMAIN_ID_CONF,
+             signal,
+             SetDomainIdConf::SignalLength,
+             JBB);
 }
 
 void Dbspj::execINCL_NODEREQ(Signal *signal) {

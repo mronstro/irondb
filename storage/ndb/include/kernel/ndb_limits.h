@@ -29,6 +29,7 @@
 
 #include "ndb_version.h"  // Limits might depend on NDB version
 
+#define MAX_INT (0x7fffffff)
 #define RNIL    Uint32(0xffffff00)
 #define RNIL64  Uint64(0xffffffffffffff00)
 #define MBYTE64 Uint64(1024 * 1024)

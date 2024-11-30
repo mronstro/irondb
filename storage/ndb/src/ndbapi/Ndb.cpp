@@ -709,8 +709,10 @@ NdbImpl::select_node(NdbTableImpl *table_impl,
    * nodes with the same proximity, but small enough to not prioritize
    * it over other nodes with higher proximity.
    */
+  DBUG_ENTER("NdbImpl::select_node");
+  DBUG_PRINT("enter",("cnt: %u", cnt));
   if (table_impl == nullptr) {
-    return m_ndb_cluster_connection.select_any(this);
+    DBUG_RETURN(m_ndb_cluster_connection.select_any(this));
   }
 
   Uint32 nodeId;
@@ -735,9 +737,11 @@ NdbImpl::select_node(NdbTableImpl *table_impl,
                                                               nodes,
                                                               cnt,
                                                               primary_node);
+      DBUG_PRINT("exit",("select_location_based: nodeId: %u", nodeId));
     } else {
       /* Backwards compatible setting */
       nodeId = primary_node;
+      DBUG_PRINT("exit",("Choose primary: nodeId: %u", nodeId));
     }
   } else if (fullyReplicated) {
     /**
@@ -747,12 +751,14 @@ NdbImpl::select_node(NdbTableImpl *table_impl,
     cnt = table_impl->m_fragments.size();
     nodes = table_impl->m_fragments.getBase();
     nodeId = m_ndb_cluster_connection.select_node(this, nodes, cnt, 0);
+    DBUG_PRINT("exit",("select_node: nodeId: %u", nodeId));
   } else if (cnt == 0) {
     /**
      * For unhinted select, let caller select node.
      * Except for fully replicated tables, see above.
      */
     nodeId = m_ndb_cluster_connection.select_any(this);
+    DBUG_PRINT("exit",("select_any: nodeId: %u", nodeId));
   } else {
     /**
      * Read backup tables.
@@ -760,8 +766,9 @@ NdbImpl::select_node(NdbTableImpl *table_impl,
      */
     require(readBackup);
     nodeId = m_ndb_cluster_connection.select_node(this, nodes, cnt, 0);
+    DBUG_PRINT("exit",("select_node: nodeId: %u", nodeId));
   }
-  return nodeId;
+  DBUG_RETURN(nodeId);
 }
 
 NdbTransaction *Ndb::startTransaction(const NdbDictionary::Table *table,

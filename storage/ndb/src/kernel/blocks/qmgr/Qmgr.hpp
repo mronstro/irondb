@@ -94,6 +94,7 @@
 #define ZWRONG_STATE_ERROR 1117
 #define ZNODE_ZERO_ERROR 1118
 #define ZWRONG_NODE_ERROR 1119
+#define ZSET_DOMAIN_ID_BUSY_ERROR 1120
 
 #endif
 
@@ -532,6 +533,14 @@ class Qmgr : public SimulatedBlock {
   void execDEACTIVATE_CONF(Signal*);
   void execDEACTIVATE_REF(Signal*);
 
+  void execSET_DOMAIN_ID_REQ(Signal*);
+  void execSET_DOMAIN_ID_CONF(Signal*);
+  void execSET_DOMAIN_ID_REF(Signal*);
+
+  void sendSET_DOMAIN_ID_REQ(Signal*, Uint32, Uint32, NodeId, Uint32);
+  void sendSET_DOMAIN_ID_CONF(Signal*, Uint32, Uint32, NodeId, Uint32);
+  void sendSET_DOMAIN_ID_REF(Signal*, Uint32, Uint32, NodeId, Uint32, Uint32);
+
   void execSET_HOSTNAME_REQ(Signal*);
   void execSET_HOSTNAME_CONF(Signal*);
   void execSET_HOSTNAME_REF(Signal*);
@@ -550,18 +559,21 @@ class Qmgr : public SimulatedBlock {
 
   void handle_activate_failed_node(Signal*, NodeRecPtr);
   bool send_activate_node(NodeRecPtr nodePtr);
+  bool send_location_domain_id_node(NodeRecPtr nodePtr);
   void handle_activate_receive(Uint32, Uint32);
 
   void check_activate_finished(Signal*);
   void check_deactivate_finished(Signal*);
   void check_set_hostname_finished(Signal*);
+  void check_set_location_domain_id_finished(Signal*);
 
   enum ActivateState
   {
     IDLE = 0,
     HANDLE_ACTIVATE = 1,
     HANDLE_DEACTIVATE = 2,
-    HANDLE_SET_HOSTNAME = 3
+    HANDLE_SET_HOSTNAME = 3,
+    HANDLE_SET_DOMAIN_ID = 4
   };
   ActivateState m_activate_state;
 
@@ -581,10 +593,15 @@ class Qmgr : public SimulatedBlock {
    */
   NodeId m_activate_node_id;
 
+  Uint32 m_activate_sender_id;
+  Uint32 m_activate_location_domain_id;
+
   /**
    * Did we fully succeed with the operation.
    */
   bool m_activate_success;
+
+  Uint32 m_activate_error_code;
 
   // Arbitration signals
   void execARBIT_CFG(Signal *signal);

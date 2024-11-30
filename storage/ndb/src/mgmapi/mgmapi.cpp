@@ -2656,6 +2656,47 @@ ndb_mgm_get_nodeid(NdbMgmHandle handle,
 
 extern "C"
 int
+ndb_mgm_set_domain_id(NdbMgmHandle handle,
+                      const int nodeId,
+                      const int new_location_domain_id)
+{
+  DBUG_ENTER("ndb_mgm_set_domain_id");
+  CHECK_HANDLE(handle, -1);
+  SET_ERROR(handle, NDB_MGM_NO_ERROR, "Executing: ndb_mgm_set_domain_id");
+  const ParserRow<ParserDummy> set_domain_id_reply[] = {
+    MGM_CMD("set_location_domain_id reply", NULL, ""),
+    MGM_ARG("result", String, Mandatory, "Error message"),
+    MGM_END()
+  };
+  int activated = -1;
+  CHECK_CONNECTED(handle, -1);
+  Properties args;
+  args.put("node", nodeId);
+  args.put("new_location_domain_id", new_location_domain_id);
+  const Properties *reply;
+  reply = ndb_mgm_call(handle,
+                       set_domain_id_reply,
+                       "set_location_domain_id",
+                       &args);
+  if (reply != NULL)
+  {
+    BaseString result;
+    reply->get("result", result);
+    if (strcmp(result.c_str(), "Ok") == 0)
+    {
+      activated = 0;
+    }
+    else
+    {
+      SET_ERROR(handle, EINVAL, result.c_str());
+    }
+  }
+  delete reply;
+  DBUG_RETURN(activated);
+}
+
+extern "C"
+int
 ndb_mgm_set_hostname(NdbMgmHandle handle,
                      const int nodeId,
                      const char *new_hostname)

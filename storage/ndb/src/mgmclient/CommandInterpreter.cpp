@@ -157,6 +157,7 @@ class CommandInterpreter {
   void waitForEventThread();
 
  public:
+  int executeSetDomain(int processId, const char* parameters, bool all);
   int executeHostname(int processId, const char *parameters, bool all);
   int executeActivate(int processId, const char *parameters, bool all);
   int executeDeactivate(int processId, const char *parameters, bool all);
@@ -324,6 +325,7 @@ static const char* helpText =
 "CLUSTERLOG OFF [<severity>] ...        Disable Cluster logging\n"
 "CLUSTERLOG TOGGLE [<severity>] ...     Toggle severity filter on/off\n"
 "CLUSTERLOG INFO                        Print cluster log information\n"
+"<id> LOCATION_DOMAIN_ID [<id>]         Change location domain id of a node\n"
 "<id> HOSTNAME [<hostname/IP>]          Change hostname of a deactivated node\n"
 "<id> ACTIVATE                          Activate a node previously deactivated\n"
 "<id> DEACTIVATE                        Deactivate a node (and stop it)\n"
@@ -512,9 +514,18 @@ static const char* helpTextHostname =
 "---------------------------------------------------------------------------\n"
 " RonDB -- Management Client -- Help for HOSTNAME command\n"
 "---------------------------------------------------------------------------\n"
-"HOSTNAME Change hostname of a currently deactive node\n\n"
+"HOSTNAME Change hostname of a currently deactivated node\n\n"
 "<id> HOSTNAME [<hostname>]    Set the new hostname of the node identified   \n"
 "                              by <id>.\n\n"
+;
+
+static const char* helpTextSetDomainId =
+"---------------------------------------------------------------------------\n"
+" RonDB -- Management Client -- Help for LOCATION_DOMAIN_ID command\n"
+"---------------------------------------------------------------------------\n"
+"HOSTNAME Change location domain id of a node\n\n"
+"<id> LOCATION_DOMAIN_ID [<domain_id>]  Set the new location domain id of   \n"
+"                                       the node identified by <id>       \n\n"
 ;
 
 static const char* helpTextActivate =
@@ -836,6 +847,7 @@ struct st_cmd_help {
                   {"CLUSTERLOG OFF", helpTextClusterlogOff, NULL},
                   {"CLUSTERLOG TOGGLE", helpTextClusterlogToggle, NULL},
                   {"CLUSTERLOG INFO", helpTextClusterlogInfo, NULL},
+                  {"LOCATION_DOMAIN_ID", helpTextSetDomainId, NULL},
                   {"HOSTNAME", helpTextHostname, NULL},
                   {"ACTIVATE", helpTextActivate, NULL},
                   {"DEACTIVATE", helpTextDeactivate, NULL},
@@ -1652,6 +1664,7 @@ static const CommandInterpreter::CommandFunctionPair commands[] = {
   ,{ "HOSTNAME", &CommandInterpreter::executeHostname }
   ,{ "ACTIVATE", &CommandInterpreter::executeActivate }
   ,{ "DEACTIVATE", &CommandInterpreter::executeDeactivate }
+  ,{ "LOCATION_DOMAIN_ID", &CommandInterpreter::executeSetDomain }
 };
 
 
@@ -2607,6 +2620,105 @@ CommandInterpreter::check_before_config_change(int processId,
     return false;
   }
   return true;
+}
+
+int
+CommandInterpreter::executeSetDomain(int processId,
+                                     const char* parameters,
+                                     bool all)
+{
+  if (all)
+  {
+    ndbout << "ALL LOCATION_DOMAIN_ID command not allowed" << endl;
+    return -1;
+  }
+  bool is_node_up;
+  ndb_mgm_node_type node_type;
+  if (!check_before_config_change(processId, is_node_up, node_type))
+  {
+    return -1;
+  }
+  (void)is_node_up;
+  (void)node_type;
+
+  Vector<BaseString> command_list;
+  if (!parameters)
+  {
+    ndbout_c("Need a location domain id parameter to this command");
+    ndbout_c("<id> LOCATION_DOMAIN_ID location_domain_id");
+    return -1;
+  }
+  split_args(parameters, command_list);
+  if (command_list.size() != 1)
+  {
+    ndbout_c("Command have too many parameters");
+    ndbout_c("<id> LOCATION_DOMAIN_ID location_domain_id");
+    return -1;
+  }
+
+  ndb_mgm_configuration * conf = ndb_mgm_get_configuration(m_mgmsrv,0);
+  if (conf == 0)
+  {
+    ndbout_c("Could not get configuration");
+    printError();
+    return -1;
+  }
+
+  ConfigValues::Iterator iter(conf->m_config_values);
+  bool ret = get_node_section(iter, processId, 0);
+  if (!ret)
+  {
+    printError();
+    ndbout_c("Failed to get configuration of node %d", processId);
+    ndb_mgm_destroy_configuration(conf);
+    return -1;
+  }
+  const char *new_location_domain_id_str = command_list[0].c_str();
+  Uint32 str_len = strlen(new_location_domain_id_str);
+  const char *memory_end = new_location_domain_id_str + str_len;
+  char *end_ptr = nullptr;
+  Int64 val = strtoll(new_location_domain_id_str, &end_ptr, 10);
+  if (unlikely(errno == ERANGE ||
+               end_ptr != memory_end ||
+               val < 0 ||
+               val > MAX_INT)) {
+    iter.closeSection();
+    ndbout_c("Location domain id must be an unsigned no larger than MAX_INT");
+    ndb_mgm_destroy_configuration(conf);
+    return -1;
+  }
+  Uint32 new_location_domain_id = Uint32(val);
+  iter.set(CFG_LOCATION_DOMAIN_ID, new_location_domain_id);
+  iter.closeSection();
+  int ret_code = ndb_mgm_set_configuration(m_mgmsrv, conf);
+  if (ret_code != 0)
+  {
+    ndbout_c("Failed to change configuration");
+    printError();
+    ndb_mgm_destroy_configuration(conf);
+    return -1;
+  }
+  ndbout_c("Configuration changed to reflect new location domain id of node %d",
+           processId);
+  ndbout_c("Now changing location domain id in the cluster");
+
+  ret_code = ndb_mgm_set_domain_id(m_mgmsrv,
+                                   processId,
+                                   new_location_domain_id);
+  if (ret_code < 0)
+  {
+    ndbout_c("Failed to set location domain id for node %d in the cluster",
+             processId);
+    printError();
+    return -1;
+  }
+  else
+  {
+    ndbout_c("Node %d now has location domain id %u in the cluster",
+             processId,
+             new_location_domain_id);
+  }
+  return 0;
 }
 
 int

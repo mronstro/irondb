@@ -57,6 +57,7 @@
 #include <signaldata/Sync.hpp>
 #include <signaldata/TamperOrd.hpp>
 #include <signaldata/TestOrd.hpp>
+#include <signaldata/SetDomainId.hpp>
 
 #ifdef ERROR_INSERT
 #include <signaldata/FsOpenReq.hpp>
@@ -156,6 +157,7 @@ Cmvmi::Cmvmi(Block_context &ctx)
   addRecSignal(GSN_ACTIVATE_REQ, &Cmvmi::execACTIVATE_REQ);
   addRecSignal(GSN_DEACTIVATE_REQ, &Cmvmi::execDEACTIVATE_REQ);
   addRecSignal(GSN_SET_HOSTNAME_REQ, &Cmvmi::execSET_HOSTNAME_REQ);
+  addRecSignal(GSN_SET_DOMAIN_ID_REQ, &Cmvmi::execSET_DOMAIN_ID_REQ);
 #ifdef ERROR_INSERT
   addRecSignal(GSN_FSOPENCONF, &Cmvmi::execFSOPENCONF);
   addRecSignal(GSN_FSCLOSECONF, &Cmvmi::execFSCLOSECONF);
@@ -3412,6 +3414,17 @@ void Cmvmi::execGET_CONFIG_REQ(Signal *signal) {
   sendFragmentedSignal(retRef, GSN_GET_CONFIG_CONF, signal,
                        GetConfigConf::SignalLength, JBB, ptr, nSections,
                        TheEmptyCallback);
+}
+
+void Cmvmi::execSET_DOMAIN_ID_REQ(Signal *signal)
+{
+  jamEntry();
+  /* Just route it to Qmgr that has more state to handle it. */
+  sendSignal(QMGR_REF,
+             GSN_SET_DOMAIN_ID_REQ,
+             signal,
+             SetDomainIdReq::SignalLength,
+             JBB);
 }
 
 void Cmvmi::execSET_HOSTNAME_REQ(Signal *signal)

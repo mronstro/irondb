@@ -63,6 +63,7 @@
 #include <signaldata/TrpKeepAlive.hpp>
 #include <signaldata/Activate.hpp>
 #include <signaldata/SetHostname.hpp>
+#include <signaldata/SetDomainId.hpp>
 #include <Configuration.hpp>
 #ifdef _WIN32
 #include <ws2tcpip.h>
@@ -3530,6 +3531,223 @@ void Qmgr::apiHbHandlingLab(Signal *signal, NDB_TICKS now) {
   return;
 }  // Qmgr::apiHbHandlingLab()
 
+void Qmgr::execSET_DOMAIN_ID_REQ(Signal *signal)
+{
+  jamEntry();
+  const SetDomainIdReq* const req =
+    (const SetDomainIdReq *)signal->getDataPtr();
+  Uint32 senderId = req->senderId;
+  BlockReference senderRef = req->senderRef;
+  NodeId changeNodeId = req->changeNodeId;
+  Uint32 locationDomainId = req->locationDomainId;
+
+  ndbrequire(signal->getNoOfSections() == 0);
+  DEB_ACTIVATE(("SET_DOMAIN_ID_REQ from %x node: %u, new loc domain id: %u",
+                senderRef,
+                changeNodeId,
+                locationDomainId));
+
+  if (changeNodeId > MAX_NODES || 
+      changeNodeId == 0 ||
+      m_activate_state != ActivateState::IDLE)
+  {
+    g_eventLogger->info("SET_DOMAIN_ID_REQ failed, state: %u on node: %u",
+                        m_activate_state,
+                        changeNodeId);
+    sendSET_DOMAIN_ID_REF(signal,
+                          senderId,
+                          senderRef,
+                          changeNodeId,
+                          locationDomainId,
+                          ZSET_DOMAIN_ID_BUSY_ERROR);
+    return;
+  }
+  g_eventLogger->info("SET LocationDomainId of Node %u to %u",
+                      changeNodeId,
+                      locationDomainId);
+
+  m_activate_node_id = changeNodeId;
+  m_activate_ref = senderRef;
+  m_activate_state = ActivateState::HANDLE_SET_DOMAIN_ID;
+  m_activate_success = true;
+  m_activate_error_code = 0;
+  m_activate_outstanding = 0;
+  m_activate_sender_id = senderId;
+  m_activate_location_domain_id = locationDomainId;
+
+  /* First contact DBTC, next DBSPJ and finally API nodes */
+  sendSET_DOMAIN_ID_REQ(signal,
+                        senderId,
+                        DBTC_REF,
+                        changeNodeId,
+                        locationDomainId);
+}
+
+void Qmgr::execSET_DOMAIN_ID_CONF(Signal *signal)
+{
+  jamEntry();
+  const SetDomainIdConf* const conf =
+    (const SetDomainIdConf *)signal->getDataPtr();
+  Uint32 senderId = conf->senderId;
+  Uint32 senderRef = conf->senderRef;
+  NodeId changeNodeId = conf->changeNodeId;
+  Uint32 locationDomainId = conf->locationDomainId;
+  ndbrequire(m_activate_state == ActivateState::HANDLE_SET_DOMAIN_ID);
+  Uint32 block = refToMain(senderRef);
+  if (block == DBTC) {
+    DEB_ACTIVATE(("SET_DOMAIN_ID_CONF from DBTC, node: %u",
+                  changeNodeId));
+    sendSET_DOMAIN_ID_REQ(signal,
+                          senderId,
+                          DBSPJ_REF,
+                          changeNodeId,
+                          locationDomainId);
+    return;
+  } else if (block == DBSPJ) {
+    DEB_ACTIVATE(("SET_DOMAIN_ID_CONF from DBSPJ, node: %u",
+                  changeNodeId));
+    ndbrequire(m_activate_outstanding == 0);
+    for (NodeId nodeId = 1; nodeId < MAX_NODES; nodeId++)
+    {
+      NodeRecPtr nodePtr;
+      nodePtr.i = Uint32(nodeId);
+      ptrAss(nodePtr, nodeRec);
+      if (send_location_domain_id_node(nodePtr))
+      {
+        jam();
+        jamLine(nodePtr.i);
+        Uint32 ref = numberToRef(API_CLUSTERMGR, nodePtr.i);
+        sendSET_DOMAIN_ID_REQ(signal,
+                              m_activate_sender_id,
+                              ref,
+                              changeNodeId,
+                              locationDomainId);
+        m_activate_outstanding++;
+        nodePtr.p->m_activate_ongoing = true;
+      }
+    }
+    DEB_ACTIVATE(("Sent SET_DOMAIN_ID_REQ to %u nodes",
+                  m_activate_outstanding));
+    check_set_location_domain_id_finished(signal);
+    return;
+  }
+  DEB_ACTIVATE(("SET_DOMAIN_ID_CONF from %u node: %u",
+                senderId,
+                changeNodeId));
+  handle_activate_receive(senderId, changeNodeId);
+  check_set_location_domain_id_finished(signal);
+}
+
+void Qmgr::execSET_DOMAIN_ID_REF(Signal *signal)
+{
+  jamEntry();
+  NodeRecPtr nodePtr;
+  const SetDomainIdRef* const ref =
+    (const SetDomainIdRef *)signal->getDataPtr();
+  Uint32 senderId = ref->senderId;
+  NodeId changeNodeId = ref->changeNodeId;
+  Uint32 error_code = ref->errorCode;
+  g_eventLogger->info("SET_DOMAIN_ID_REF from %u node: %u, error: %u",
+                      senderId,
+                      changeNodeId,
+                      error_code);
+  ndbrequire(m_activate_state == ActivateState::HANDLE_SET_HOSTNAME);
+  handle_activate_receive(senderId, changeNodeId);
+  m_activate_success = false;
+  m_activate_error_code = error_code;
+  check_set_location_domain_id_finished(signal);
+}
+
+void Qmgr::check_set_location_domain_id_finished(Signal *signal)
+{
+  if (m_activate_outstanding == 0)
+  {
+    jam();
+    if (m_activate_success)
+    {
+      jam();
+      sendSET_DOMAIN_ID_CONF(signal,
+                             m_activate_sender_id,
+                             m_activate_ref,
+                             m_activate_node_id,
+                             m_activate_location_domain_id);
+    }
+    else
+    {
+      jam();
+      sendSET_DOMAIN_ID_REF(signal,
+                            m_activate_sender_id,
+                            m_activate_ref,
+                            m_activate_node_id,
+                            m_activate_location_domain_id,
+                            m_activate_error_code);
+    }
+    m_activate_state = ActivateState::IDLE;
+    m_activate_node_id = 0;
+    m_activate_ref = 0;
+    m_activate_success = false;
+    m_activate_error_code = 0;
+    m_activate_sender_id = 0;
+    m_activate_location_domain_id = 0;
+  }
+}
+
+void Qmgr::sendSET_DOMAIN_ID_REQ(Signal *signal,
+                                 Uint32 senderId,
+                                 Uint32 senderRef,
+                                 NodeId changeNodeId,
+                                 Uint32 locationDomainId)
+{
+  SetDomainIdReq* const req = (SetDomainIdReq*)signal->getDataPtrSend();
+  req->senderId = senderId;
+  req->senderRef = reference();
+  req->changeNodeId = changeNodeId,
+  req->locationDomainId = locationDomainId;
+  sendSignal(senderRef,
+             GSN_SET_DOMAIN_ID_REQ,
+             signal,
+             SetDomainIdReq::SignalLength,
+             JBB);
+}
+
+void Qmgr::sendSET_DOMAIN_ID_CONF(Signal *signal,
+                                  Uint32 senderId,
+                                  Uint32 senderRef,
+                                  NodeId nodeId,
+                                  Uint32 locationDomainId)
+{
+  SetDomainIdConf* const conf = (SetDomainIdConf*)signal->getDataPtrSend();
+  conf->senderId = senderId;
+  conf->senderRef = reference();
+  conf->changeNodeId = Uint32(nodeId);
+  conf->locationDomainId = locationDomainId;
+  sendSignal(senderRef,
+             GSN_SET_DOMAIN_ID_CONF,
+             signal,
+             SetDomainIdConf::SignalLength,
+             JBB);
+}
+
+void Qmgr::sendSET_DOMAIN_ID_REF(Signal *signal,
+                                 Uint32 senderId,
+                                 Uint32 senderRef,
+                                 NodeId changeNodeId,
+                                 Uint32 locationDomainId,
+                                 Uint32 errorCode)
+{
+  SetDomainIdRef* const ref = (SetDomainIdRef*)signal->getDataPtrSend();
+  ref->senderId = senderId;
+  ref->senderRef = reference();
+  ref->changeNodeId = changeNodeId;
+  ref->locationDomainId = locationDomainId;
+  ref->errorCode = errorCode;
+  sendSignal(senderRef,
+             GSN_SET_DOMAIN_ID_REF,
+             signal,
+             SetDomainIdRef::SignalLength,
+             JBB);
+}
+
 void Qmgr::execACTIVATE_REQ(Signal *signal)
 {
   jamEntry();
@@ -3690,6 +3908,11 @@ void Qmgr::handle_activate_failed_node(Signal *signal, NodeRecPtr nodePtr)
       check_set_hostname_finished(signal);
       break;
     }
+    case ActivateState::HANDLE_SET_DOMAIN_ID:
+    {
+      check_set_location_domain_id_finished(signal);
+      break;
+    }
     default:
     {
       ndbabort();
@@ -3702,6 +3925,20 @@ bool Qmgr::send_activate_node(NodeRecPtr nodePtr)
 {
   bool data_node = (getNodeInfo(nodePtr.i).getType() == NodeInfo::DB);
   bool supported = ndbd_api_support_activate(getNodeInfo(nodePtr.i).m_version);
+  bool api_active = (nodePtr.p->phase == ZAPI_ACTIVE);
+  bool normal_fail_state = (nodePtr.p->failState == NORMAL);
+  if (!data_node && supported && api_active && normal_fail_state)
+  {
+    return true;
+  }
+  return false;
+}
+
+bool Qmgr::send_location_domain_id_node(NodeRecPtr nodePtr)
+{
+  bool data_node = (getNodeInfo(nodePtr.i).getType() == NodeInfo::DB);
+  bool supported =
+    ndbd_support_set_location_domain_id(getNodeInfo(nodePtr.i).m_version);
   bool api_active = (nodePtr.p->phase == ZAPI_ACTIVE);
   bool normal_fail_state = (nodePtr.p->failState == NORMAL);
   if (!data_node && supported && api_active && normal_fail_state)
@@ -4064,7 +4301,7 @@ void Qmgr::sendDEACTIVATE_REF(Signal *signal,
   sendSignal(senderRef,
              GSN_DEACTIVATE_REF,
              signal,
-             ActivateRef::SignalLength,
+             DeactivateRef::SignalLength,
              JBB);
 }
 

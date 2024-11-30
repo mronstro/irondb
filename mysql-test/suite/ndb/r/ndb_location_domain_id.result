@@ -1,0 +1,173 @@
+Configuration changed to reflect new location domain id of node 1
+Now changing location domain id in the cluster
+Node 1 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 2
+Now changing location domain id in the cluster
+Node 2 now has location domain id 2 in the cluster
+
+Configuration changed to reflect new location domain id of node 16
+Now changing location domain id in the cluster
+Node 16 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 32
+Now changing location domain id in the cluster
+Node 32 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 48
+Now changing location domain id in the cluster
+Node 48 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 49
+Now changing location domain id in the cluster
+Node 49 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 63
+Now changing location domain id in the cluster
+Node 63 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 127
+Now changing location domain id in the cluster
+Node 127 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 192
+Now changing location domain id in the cluster
+Node 192 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 228
+Now changing location domain id in the cluster
+Node 228 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 229
+Now changing location domain id in the cluster
+Node 229 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 230
+Now changing location domain id in the cluster
+Node 230 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 231
+Now changing location domain id in the cluster
+Node 231 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 232
+Now changing location domain id in the cluster
+Node 232 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 233
+Now changing location domain id in the cluster
+Node 233 now has location domain id 1 in the cluster
+
+Configuration changed to reflect new location domain id of node 255
+Now changing location domain id in the cluster
+Node 255 now has location domain id 1 in the cluster
+
+create table t1 (a int not null primary key) engine ndb;
+insert into t1 values (0),(1),(2),(3);
+select * from t1 order by a;
+a
+0
+1
+2
+3
+
+select a from t1 where a = 0;
+a
+0
+select a from t1 where a = 1;
+a
+1
+select a from t1 where a = 2;
+a
+2
+select a from t1 where a = 3;
+a
+3
+
+Configuration changed to reflect new location domain id of node 1
+Now changing location domain id in the cluster
+Node 1 now has location domain id 2 in the cluster
+
+Configuration changed to reflect new location domain id of node 2
+Now changing location domain id in the cluster
+Node 2 now has location domain id 1 in the cluster
+
+
+select a from t1 where a = 0;
+a
+0
+select a from t1 where a = 1;
+a
+1
+select a from t1 where a = 2;
+a
+2
+select a from t1 where a = 3;
+a
+3
+
+drop table t1;
+Configuration changed to reflect new location domain id of node 1
+Now changing location domain id in the cluster
+Node 1 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 2
+Now changing location domain id in the cluster
+Node 2 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 16
+Now changing location domain id in the cluster
+Node 16 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 32
+Now changing location domain id in the cluster
+Node 32 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 48
+Now changing location domain id in the cluster
+Node 48 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 49
+Now changing location domain id in the cluster
+Node 49 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 63
+Now changing location domain id in the cluster
+Node 63 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 127
+Now changing location domain id in the cluster
+Node 127 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 192
+Now changing location domain id in the cluster
+Node 192 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 228
+Now changing location domain id in the cluster
+Node 228 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 229
+Now changing location domain id in the cluster
+Node 229 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 230
+Now changing location domain id in the cluster
+Node 230 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 231
+Now changing location domain id in the cluster
+Node 231 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 232
+Now changing location domain id in the cluster
+Node 232 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 233
+Now changing location domain id in the cluster
+Node 233 now has location domain id 0 in the cluster
+
+Configuration changed to reflect new location domain id of node 255
+Now changing location domain id in the cluster
+Node 255 now has location domain id 0 in the cluster
+

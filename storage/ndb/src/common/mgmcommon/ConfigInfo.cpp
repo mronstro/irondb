@@ -49,6 +49,8 @@
 #define MAX_INT_RNIL 0xfffffeff
 #define MAX_INT32 0xffffffff
 #define MAX_PORT_NO 65535
+#define MAX_SIGNED_INT 0x7fffffff
+
 
 #define _STR_VALUE(x) #x
 #define STR_VALUE(x) _STR_VALUE(x)
@@ -1154,7 +1156,7 @@ const ConfigInfo::ParamInfo ConfigInfo::m_ParamInfo[] = {
 
     {CFG_LOCATION_DOMAIN_ID, "LocationDomainId", DB_TOKEN,
      "LocationDomainId for node", ConfigInfo::CI_USED, false,
-     ConfigInfo::CI_INT, nullptr, "0", "16"},
+     ConfigInfo::CI_INT, nullptr, "0", STR_VALUE(MAX_SIGNED_INT)},
 
     {CFG_DB_NODEGROUP, "Nodegroup", DB_TOKEN,
      "Nodegroup for node, only used during initial cluster start",

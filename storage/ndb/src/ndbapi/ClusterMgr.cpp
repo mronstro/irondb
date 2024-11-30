@@ -53,6 +53,7 @@
 #include "kernel/signaldata/TestOrd.hpp"
 #include <signaldata/Activate.hpp>
 #include <signaldata/SetHostname.hpp>
+#include <signaldata/SetDomainId.hpp>
 
 #include <mgmapi.h>
 #include <mgmapi_config_parameters.h>
@@ -522,6 +523,10 @@ void ClusterMgr::trp_deliver_signal(const NdbApiSignal *sig,
   const Uint32 *theData = sig->getDataPtr();
 
   switch (gsn) {
+    case GSN_SET_DOMAIN_ID_REQ:
+      execSET_DOMAIN_ID_REQ(theData);
+      break;
+
     case GSN_ACTIVATE_REQ:
       execACTIVATE_REQ(theData);
       break;
@@ -726,6 +731,88 @@ void ClusterMgr::recalcMinApiVersion() {
   newMinApiVersion = (newMinApiVersion == ~(Uint32)0) ? 0 : newMinApiVersion;
 
   minApiVersion = newMinApiVersion;
+}
+
+void
+ClusterMgr::sendSET_DOMAIN_ID_REF(Uint32 ref,
+                                  Uint32 senderId,
+                                  Uint32 senderRef,
+                                  NodeId changeNodeId,
+                                  Uint32 locationDomainId,
+                                  Uint32 errorCode) {
+  NdbApiSignal signal(ref);
+  SetDomainIdRef * const ref_sig =
+    CAST_PTR(SetDomainIdRef, signal.getDataPtrSend());
+  signal.theVerId_signalNumber = GSN_SET_DOMAIN_ID_REF;
+  signal.theReceiversBlockNumber = refToMain(senderRef);
+  signal.theTrace = 0;
+  signal.theLength = SetDomainIdRef::SignalLength;
+  ref_sig->senderId = senderId;
+  ref_sig->senderRef = ref;
+  ref_sig->changeNodeId = changeNodeId;
+  ref_sig->locationDomainId = locationDomainId;
+  ref_sig->errorCode = errorCode;
+  safe_sendSignal(&signal, refToNode(senderRef));
+  DEBUG_FPRINTF((stderr, "Send SET_DOMAIN_ID_REF to %u about node %u, err: %u",
+                 refToNode(senderRef),
+                 changeNodeId,
+                 errorCode));
+
+}
+
+void
+ClusterMgr::execSET_DOMAIN_ID_REQ(const Uint32 *theData)
+{
+  const SetDomainIdReq * const setDomainIdReq =
+    (const SetDomainIdReq *)&theData[0];
+  Uint32 senderId = setDomainIdReq->senderId;
+  Uint32 senderRef = setDomainIdReq->senderRef;
+  NodeId changeNodeId = setDomainIdReq->changeNodeId;
+  Uint32 locationDomainId = setDomainIdReq->locationDomainId;
+  Uint32 ref = numberToRef(API_CLUSTERMGR, theFacade.ownId());
+  if (changeNodeId > MAX_NODES)
+  {
+    /* Should never happen, thus error code 0 */
+    sendSET_DOMAIN_ID_REF(ref,
+                          senderId,
+                          senderRef,
+                          changeNodeId,
+                          locationDomainId,
+                          0);
+    return;
+  }
+  Ndb_cluster_connection_impl *ndb_cluster_connection =
+    theFacade.get_ndb_cluster_connection();
+  int error_code = 0;
+  if (ndb_cluster_connection != nullptr) {
+    error_code =
+      ndb_cluster_connection->set_location_domain_id(changeNodeId,
+                                                     locationDomainId);
+  }
+  if (error_code != 0) {
+    sendSET_DOMAIN_ID_REF(ref,
+                          senderId,
+                          senderRef,
+                          changeNodeId,
+                          locationDomainId,
+                          Uint32(error_code));
+    return;
+  }
+  NdbApiSignal signal(ref);
+  SetDomainIdConf * const conf =
+    CAST_PTR(SetDomainIdConf, signal.getDataPtrSend());
+  signal.theVerId_signalNumber   = GSN_SET_DOMAIN_ID_CONF;
+  signal.theReceiversBlockNumber = refToMain(senderRef);
+  signal.theTrace = 0;
+  signal.theLength = SetDomainIdConf::SignalLength;
+  conf->senderId = theFacade.ownId();
+  conf->senderRef = ref;
+  conf->changeNodeId = changeNodeId;
+  conf->locationDomainId = locationDomainId;
+  safe_sendSignal(&signal, refToNode(senderRef));
+  DEBUG_FPRINTF((stderr, "Send SET_DOMAIN_ID_CONF to %u about node %u",
+                 refToNode(senderRef),
+                 changeNodeId));
 }
 
 void

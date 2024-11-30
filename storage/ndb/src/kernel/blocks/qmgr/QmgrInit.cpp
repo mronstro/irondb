@@ -265,6 +265,10 @@ Qmgr::Qmgr(Block_context &ctx) : SimulatedBlock(QMGR, ctx) {
   addRecSignal(GSN_PROCESSINFO_REP, &Qmgr::execPROCESSINFO_REP);
   addRecSignal(GSN_SYNC_THREAD_VIA_CONF, &Qmgr::execSYNC_THREAD_VIA_CONF);
 
+  addRecSignal(GSN_SET_DOMAIN_ID_REQ, &Qmgr::execSET_DOMAIN_ID_REQ);
+  addRecSignal(GSN_SET_DOMAIN_ID_CONF, &Qmgr::execSET_DOMAIN_ID_CONF);
+  addRecSignal(GSN_SET_DOMAIN_ID_REF, &Qmgr::execSET_DOMAIN_ID_REF);
+
   addRecSignal(GSN_ACTIVATE_REQ, &Qmgr::execACTIVATE_REQ);
   addRecSignal(GSN_ACTIVATE_CONF, &Qmgr::execACTIVATE_CONF);
   addRecSignal(GSN_ACTIVATE_REF, &Qmgr::execACTIVATE_REF);

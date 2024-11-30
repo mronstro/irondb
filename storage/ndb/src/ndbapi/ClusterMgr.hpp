@@ -222,6 +222,7 @@ class ClusterMgr : public trp_client {
   /**
    * Signals received
    */
+  void execSET_DOMAIN_ID_REQ  (const Uint32 * theData);
   void execSET_HOSTNAME_REQ(const NdbApiSignal*, const LinearSectionPtr ptr[]);
   void execACTIVATE_REQ  (const Uint32 * theData);
   void execDEACTIVATE_REQ  (const Uint32 * theData);
@@ -232,6 +233,7 @@ class ClusterMgr : public trp_client {
   void execNODE_FAILREP  (const NdbApiSignal*, const LinearSectionPtr ptr[]);
   void execNF_COMPLETEREP(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
 
+  void sendSET_DOMAIN_ID_REF(Uint32, Uint32, Uint32, NodeId, Uint32, Uint32);
   void check_wait_for_hb(NodeId nodeId);
 
   void is_cluster_completely_unavailable(Int32 & error, Uint32 line);

@@ -1470,7 +1470,9 @@ void TransporterFacade::external_poll(Uint32 wait_time) {
   } while (wait_time > 0);
 }
 
-TransporterFacade::TransporterFacade(GlobalDictCache *cache)
+TransporterFacade::TransporterFacade(
+  GlobalDictCache *cache,
+  Ndb_cluster_connection_impl *ndb_cluster_connection)
     : min_active_clients_recv_thread(DEFAULT_MIN_ACTIVE_CLIENTS_RECV_THREAD),
       recv_thread_cpu_id(NO_RECV_THREAD_CPU_ID),
       m_poll_owner_tid(),
@@ -1519,7 +1521,8 @@ TransporterFacade::TransporterFacade(GlobalDictCache *cache)
       m_tls_search_path(NDB_TLS_SEARCH_PATH),
       m_tls_node_type(NODE_TYPE_API),
       m_max_poll_waiters(0),
-      m_use_poll_waiters(0) {
+      m_use_poll_waiters(0),
+      m_ndb_cluster_connection(ndb_cluster_connection) {
   DBUG_ENTER("TransporterFacade::TransporterFacade");
   thePollMutex = NdbMutex_CreateWithName("PollMutex");
   sendPerformedLastInterval = 0;

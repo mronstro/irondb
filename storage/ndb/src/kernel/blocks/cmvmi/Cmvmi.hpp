@@ -78,6 +78,7 @@ class Cmvmi : public SimulatedBlock {
   void execACTIVATE_REQ(Signal*);
   void execDEACTIVATE_REQ(Signal*);
   void execSET_HOSTNAME_REQ(Signal*);
+  void execSET_DOMAIN_ID_REQ(Signal*);
 
 #ifdef ERROR_INSERT
   Uint32 g_remaining_responses;

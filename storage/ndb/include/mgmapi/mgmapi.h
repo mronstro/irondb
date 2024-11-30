@@ -1043,6 +1043,19 @@ int ndb_mgm_restart4(NdbMgmHandle handle, int no_of_nodes, const int *node_list,
 		    const int * node_list);
 
   /**
+   * Set location domain id for a node
+   *
+   * @param   handle        Management handle.
+   * @param   nodeId        Node ID of node to get new location domain id
+   * @param   new_location_domain_id  New location domain id to be set for node
+   *
+   * @return                0 for success, -1 on error
+   */
+  int ndb_mgm_set_domain_id(NdbMgmHandle handle,
+                            const int nodeId,
+                            const int new_location_domain_id);
+
+  /**
    * Get node id of Management server we are connected to
    *
    * @param   handle        Management handle.

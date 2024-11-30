@@ -43,6 +43,7 @@
 #include "transporter/TransporterCallback.hpp"
 #include "trp_buffer.hpp"
 
+class Ndb_cluster_connection_impl;
 class ClusterMgr;
 class ArbitMgr;
 struct ndb_mgm_configuration;
@@ -74,7 +75,7 @@ class TransporterFacade : public TransporterCallback,
    */
   static constexpr Uint32 MAX_TRPS = MAX_NODES;
 
-  TransporterFacade(GlobalDictCache *cache);
+  TransporterFacade(GlobalDictCache *cache, Ndb_cluster_connection_impl*);
   ~TransporterFacade() override;
 
   int start_instance(NodeId, const ndb_mgm_configuration *,
@@ -631,6 +632,13 @@ private:
   /* Calculate max poll waiters */
   volatile Uint32 m_max_poll_waiters;
   Uint32 m_use_poll_waiters;
+
+  Ndb_cluster_connection_impl *m_ndb_cluster_connection;
+
+public:
+  Ndb_cluster_connection_impl* get_ndb_cluster_connection() {
+    return m_ndb_cluster_connection;
+  }
 };
 
 inline void TransporterFacade::lock_poll_mutex() {

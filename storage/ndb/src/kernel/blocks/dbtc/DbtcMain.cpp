@@ -75,6 +75,7 @@
 #include <signaldata/TcRollbackRep.hpp>
 #include <signaldata/TransIdAI.hpp>
 #include <signaldata/TrigAttrInfo.hpp>
+#include <signaldata/SetDomainId.hpp>
 
 #include <AttributeDescriptor.hpp>
 #include <AttributeHeader.hpp>
@@ -1779,6 +1780,36 @@ void Dbtc::execREAD_NODESCONF(Signal *signal) {
   }
   ndbsttorry010Lab(signal);
 }  // Dbtc::execREAD_NODESCONF()
+
+void Dbtc::execSET_DOMAIN_ID_REQ(Signal *signal) {
+  jamEntry();
+  const SetDomainIdReq* const req =
+    (const SetDomainIdReq *)signal->getDataPtr();
+  Uint32 senderId = req->senderId;
+  BlockReference senderRef = req->senderRef;
+  NodeId changeNodeId = req->changeNodeId;
+  Uint32 locationDomainId = req->locationDomainId;
+
+  /* Change the location domain id of the changeNodeId */
+  hostptr.i = changeNodeId;
+  ptrCheckGuard(hostptr, chostFilesize, hostRecord);
+  hostptr.p->m_location_domain_id = locationDomainId;
+  if (changeNodeId == getOwnNodeId()) {
+    m_my_location_domain_id = locationDomainId;
+  }
+
+  /* Send response back, this should never fail, so always CONF */
+  SetDomainIdConf* const conf = (SetDomainIdConf*)signal->getDataPtrSend();
+  conf->senderId = senderId;
+  conf->senderRef = reference();
+  conf->changeNodeId = changeNodeId;
+  conf->locationDomainId = locationDomainId;
+  sendSignal(senderRef,
+             GSN_SET_DOMAIN_ID_CONF,
+             signal,
+             SetDomainIdConf::SignalLength,
+             JBB);
+}
 
 /*****************************************************************************/
 /*                     A P I _ F A I L R E Q                                 */

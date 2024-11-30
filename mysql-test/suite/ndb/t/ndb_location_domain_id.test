@@ -1,0 +1,52 @@
+-- source include/have_ndb.inc
+-- source have_ndb_error_insert.inc
+--exec $NDB_MGM --execute "1 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "2 LOCATION_DOMAIN_ID 2"
+--exec $NDB_MGM --execute "16 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "32 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "48 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "49 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "63 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "127 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "192 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "228 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "229 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "230 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "231 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "232 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "233 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "255 LOCATION_DOMAIN_ID 1"
+create table t1 (a int not null primary key) engine ndb;
+insert into t1 values (0),(1),(2),(3);
+select * from t1 order by a;
+--exec $NDB_MGM --execute "2 ERROR 8121"
+select a from t1 where a = 0;
+select a from t1 where a = 1;
+select a from t1 where a = 2;
+select a from t1 where a = 3;
+--exec $NDB_MGM --execute "2 ERROR 0"
+--exec $NDB_MGM --execute "1 LOCATION_DOMAIN_ID 2"
+--exec $NDB_MGM --execute "2 LOCATION_DOMAIN_ID 1"
+--exec $NDB_MGM --execute "1 ERROR 8121"
+select a from t1 where a = 0;
+select a from t1 where a = 1;
+select a from t1 where a = 2;
+select a from t1 where a = 3;
+--exec $NDB_MGM --execute "1 ERROR 0"
+drop table t1;
+--exec $NDB_MGM --execute "1 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "2 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "16 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "32 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "48 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "49 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "63 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "127 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "192 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "228 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "229 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "230 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "231 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "232 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "233 LOCATION_DOMAIN_ID 0"
+--exec $NDB_MGM --execute "255 LOCATION_DOMAIN_ID 0"
