@@ -196,9 +196,7 @@ int desc_undofile(Ndb_cluster_connection &con, Ndb *myndb, char const *name) {
 
   require(dict);
 
-  con.init_get_next_node(iter);
-
-  while ((id = con.get_next_node(iter))) {
+  while ((id = con.get_next_node(iter, true))) {
     NdbDictionary::Undofile uf = dict->getUndofile(0, name);
     NdbError err = dict->getNdbError();
     if ((int)err.classification != (int)ndberror_cl_none) return 0;
@@ -229,9 +227,7 @@ int desc_datafile(Ndb_cluster_connection &con, Ndb *myndb, char const *name) {
   require(dict);
   Ndb_cluster_connection_node_iter iter;
 
-  con.init_get_next_node(iter);
-
-  while ((id = con.get_next_node(iter))) {
+  while ((id = con.get_next_node(iter, true))) {
     NdbDictionary::Datafile df = dict->getDatafile(id, name);
     NdbError err = dict->getNdbError();
     if ((int)err.classification != (int)ndberror_cl_none) return 0;

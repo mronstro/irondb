@@ -1211,7 +1211,6 @@ int UtilTransactions::verifyTableReplicas(Ndb *pNdb, bool allSources) {
   } else {
     Ndb_cluster_connection *ncc = &pNdb->get_ndb_cluster_connection();
     Ndb_cluster_connection_node_iter nodeIter;
-    ncc->init_get_next_node(nodeIter);
     unsigned int nodeId = 0;
 
     while ((nodeId = ncc->get_next_alive_node(nodeIter)) != 0) {
@@ -1389,7 +1388,6 @@ int UtilTransactions::verifyTableReplicasWithSource(Ndb *pNdb,
   {
     Ndb_cluster_connection *ncc = &pNdb->get_ndb_cluster_connection();
     Ndb_cluster_connection_node_iter node_iter;
-    ncc->init_get_next_node(node_iter);
     unsigned int node_id = ncc->get_next_alive_node(node_iter);
     while (node_id != 0) {
       dataNodes[numDataNodes++] = node_id;
@@ -1508,7 +1506,6 @@ int UtilTransactions::verifyOrderedIndexViews(
   {
     Ndb_cluster_connection *ncc = &pNdb->get_ndb_cluster_connection();
     Ndb_cluster_connection_node_iter node_iter;
-    ncc->init_get_next_node(node_iter);
     unsigned int node_id = ncc->get_next_alive_node(node_iter);
     while (node_id != 0) {
       dataNodes[numDataNodes++] = node_id;

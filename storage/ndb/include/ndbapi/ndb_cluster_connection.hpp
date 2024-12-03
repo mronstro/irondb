@@ -33,12 +33,12 @@ class Ndb_cluster_connection_node_iter {
 
  public:
   Ndb_cluster_connection_node_iter()
-      : scan_state(~0), init_pos(0), cur_pos(0) {}
-
+      : cur_pos(0) {}
+  void set_current_pos(Uint32 pos) {
+    cur_pos = pos;
+  }
  private:
-  unsigned char scan_state;
-  unsigned char init_pos;
-  unsigned char cur_pos;
+  unsigned cur_pos;
 };
 
 class Ndb;
@@ -428,8 +428,8 @@ class Ndb_cluster_connection {
   unsigned get_min_db_version() const;
   unsigned get_min_api_version() const;
 
-  void init_get_next_node(Ndb_cluster_connection_node_iter &iter);
-  unsigned int get_next_node(Ndb_cluster_connection_node_iter &iter);
+  void set_current_pos(Ndb_cluster_connection_node_iter &iter, unsigned pos);
+  unsigned int get_next_node(Ndb_cluster_connection_node_iter &iter, bool any);
   unsigned int get_next_alive_node(Ndb_cluster_connection_node_iter &iter);
   unsigned get_active_ndb_objects() const;
 

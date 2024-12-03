@@ -1348,7 +1348,7 @@ class Ndb_schema_dist_data {
     // Add one subscriber bitmap per data node in the current configuration
     unsigned node_id;
     Ndb_cluster_connection_node_iter node_iter;
-    while ((node_id = cluster_connection->get_next_node(node_iter))) {
+    while ((node_id = cluster_connection->get_next_node(node_iter, false))) {
       m_subscriber_bitmaps.emplace(node_id,
                                    new Node_subscribers(max_subscribers));
     }

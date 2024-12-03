@@ -72,50 +72,23 @@ NdbTransaction *Ndb::doConnect(Uint32 tConNode, Uint32 instance) {
   // nodes.
   //****************************************************************************
   Uint32 anyInstance = 0;
-  if (theImpl->m_optimized_node_selection) {
-    Ndb_cluster_connection_node_iter &node_iter = theImpl->m_node_iter;
-    theImpl->m_ndb_cluster_connection.init_get_next_node(node_iter);
-    while (
-        (tNode = theImpl->m_ndb_cluster_connection.get_next_node(node_iter))) {
-      TretCode = NDB_connect(tNode, anyInstance);
-      if ((TretCode == 1) || (TretCode == 2)) {
-        //****************************************************************************
-        // We have connections now to the desired node. Return
-        //****************************************************************************
-        DBUG_RETURN(getConnectedNdbTransaction(tNode, anyInstance));
-      } else if (TretCode < 0) {
-        DBUG_RETURN(nullptr);
-      } else if (TretCode != 0) {
-        tAnyAlive = 1;
-      }  // if
-      DBUG_PRINT("info",
-                 ("tried node %d, TretCode %d, error code %d, %s", tNode,
-                  TretCode, getNdbError().code, getNdbError().message));
-    }
-  } else  // just do a regular round robin
-  {
-    Uint32 tNoOfDbNodes = theImpl->theNoOfDBnodes;
-    Uint32 &theCurrentConnectIndex = theImpl->theCurrentConnectIndex;
-    UintR Tcount = 0;
-    do {
-      theCurrentConnectIndex++;
-      if (theCurrentConnectIndex >= tNoOfDbNodes) theCurrentConnectIndex = 0;
-
-      Tcount++;
-      tNode = theImpl->theDBnodes[theCurrentConnectIndex];
-      TretCode = NDB_connect(tNode, anyInstance);
-      if ((TretCode == 1) || (TretCode == 2)) {
-        //****************************************************************************
-        // We have connections now to the desired node. Return
-        //****************************************************************************
-        DBUG_RETURN(getConnectedNdbTransaction(tNode, anyInstance));
-      } else if (TretCode < 0) {
-        DBUG_RETURN(nullptr);
-      } else if (TretCode != 0) {
-        tAnyAlive = 1;
-      }  // if
-      DBUG_PRINT("info", ("tried node %d TretCode %d", tNode, TretCode));
-    } while (Tcount < tNoOfDbNodes);
+  Ndb_cluster_connection_node_iter &node_iter = theImpl->m_node_iter;
+  while ((tNode = theImpl->m_ndb_cluster_connection.get_next_node(
+    node_iter, false))) {
+    TretCode = NDB_connect(tNode, anyInstance);
+    if ((TretCode == 1) || (TretCode == 2)) {
+      //****************************************************************************
+      // We have connections now to the desired node. Return
+      //****************************************************************************
+      DBUG_RETURN(getConnectedNdbTransaction(tNode, anyInstance));
+    } else if (TretCode < 0) {
+      DBUG_RETURN(nullptr);
+    } else if (TretCode != 0) {
+      tAnyAlive = 1;
+    }  // if
+    DBUG_PRINT("info",
+               ("tried node %d, TretCode %d, error code %d, %s", tNode,
+                TretCode, getNdbError().code, getNdbError().message));
   }
 //****************************************************************************
 // We were unable to find a free connection. If no node alive we will report

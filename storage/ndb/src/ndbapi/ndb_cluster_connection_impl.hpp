@@ -74,8 +74,7 @@ class Ndb_cluster_connection_impl : public Ndb_cluster_connection {
 
   void do_test();
 
-  void init_get_next_node(Ndb_cluster_connection_node_iter &iter);
-  Uint32 get_next_node(Ndb_cluster_connection_node_iter &iter);
+  Uint32 get_next_node(Ndb_cluster_connection_node_iter &iter, bool any_node);
   Uint32 get_next_alive_node(Ndb_cluster_connection_node_iter &iter);
 
   inline unsigned get_connect_count() const;
@@ -105,32 +104,22 @@ class Ndb_cluster_connection_impl : public Ndb_cluster_connection {
       (HINT_COUNT_HALF | (HINT_COUNT_HALF - 1));
 
   struct Node {
-    Node(Uint32 _g = 0, Uint32 _id = 0)
-        : this_group_idx(0),
-          next_group_idx(0),
-          config_group(_g),  // between 0 and 200
+    Node(Uint32 _g = 0, Uint32 _id = 0) :
           adjusted_group(_g),
-          id(_id),
-          hint_count(0) {}
-    Uint32 this_group_idx;  // First index of node with same group
-    Uint32 next_group_idx;  // Next index of node not with same node, or 0.
-    Uint32 config_group;    // Proximity group from cluster connection config
+          nodeId(_id) {}
     Int32 adjusted_group;   // Proximity group adjusted via ndbapi calls
-    Uint32 id;
-    /**
-     * Counts how many times node was chosen for hint when
-     * more than one were possible.
-     */
-    Uint32 hint_count;
+    NodeId nodeId;
   };
 
-  NdbNodeBitmask m_db_nodes;
-  NdbMutex *m_nodes_proximity_mutex;
-  Vector<Node> m_nodes_proximity;
-  Uint16 m_location_domain_id[MAX_NODES];
   Uint32 m_my_node_id;
   Uint32 m_max_api_nodeid;
   Uint32 m_my_location_domain_id;
+  NdbNodeBitmask m_db_nodes;
+  NdbMutex *m_nodes_comm_group_mutex;
+  Vector<Node> m_nodes_comm_group;
+  Uint16 m_node_index[MAX_NDB_NODES];
+  Uint32 m_node_hint_count[MAX_NDB_NODES];
+  Uint16 m_location_domain_id[MAX_NODES];
   int init_nodes_vector(Uint32 nodeid, const ndb_mgm_configuration *config);
   int configure(Uint32 nodeid, const ndb_mgm_configuration *config);
   void connect_thread();
@@ -139,7 +128,7 @@ class Ndb_cluster_connection_impl : public Ndb_cluster_connection {
   const char *get_tls_certificate_path() const;
   int set_service_uri(const char *, const char *, int, const char *);
   void set_data_node_neighbour(Uint32 neighbour_node);
-  void adjust_node_proximity(Uint32 node_id, Int32 adjustment);
+  void adjust_node_comm_group(Uint32 node_id, Int32 adjustment);
   Uint32 get_db_nodes(Uint8 nodesarray[MAX_NDB_NODES]) const;
   Uint32 get_unconnected_db_nodes(Uint32 & num_connected_db_nodes) const;
 
