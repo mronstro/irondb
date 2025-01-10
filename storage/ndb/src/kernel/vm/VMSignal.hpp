@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2022, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2022, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -77,6 +77,9 @@ struct NodeReceiverGroup {
 
 template <unsigned T>
 struct SignalT {
+  SignalT() {
+    memset(&header, 0, sizeof(SignalHeader));
+  }
   Uint32 m_sectionPtrI[3];
   SignalHeader header;
   union {

@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -2612,7 +2612,7 @@ inline void SimulatedBlock::prepareRETURN_DIRECT(Uint32 gsn, Signal *signal,
   signal->header.theVerId_signalNumber = gsn;
 }
 
-// Do a consictency check before reusing a signal.
+// Do a consistency check before reusing a signal.
 inline void SimulatedBlock::check_sections(Signal25 *signal, Uint32 oldSecCount,
                                            Uint32 newSecCount) const {
   // Sections from previous use should have been consumed by now.
