@@ -6311,11 +6311,15 @@ int Dbtup::interpreterNextLab(Signal* signal,
           break;
         }
         case Interpreter::BRANCH_ATTR_OP_ATTR:
+        case Interpreter::BRANCH_ATTR_OP_ATTR + OVERFLOW_OPCODE:
+        case Interpreter::BRANCH_ATTR_OP_ARG:
+        case Interpreter::BRANCH_ATTR_OP_ARG + OVERFLOW_OPCODE:
         case Interpreter::BRANCH_ATTR_OP_PARAM:
-        case Interpreter::BRANCH_ATTR_OP_ARG: {
+        case Interpreter::BRANCH_ATTR_OP_PARAM + OVERFLOW_OPCODE: {
           const Uint32 ins2 = TcurrentProgram[TprogramCounter];
           Uint32 attrId = Interpreter::getBranchCol_AttrId(ins2) << 16;
-          const Uint32 opCode = Interpreter::getOpCode(theInstruction);
+          const Uint32 opCode =
+            Interpreter::getOpCode(theInstruction) % OVERFLOW_OPCODE;
 
           if (tmpHabitant != attrId) {
             Int32 TnoDataR =
