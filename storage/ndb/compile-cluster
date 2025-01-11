@@ -184,7 +184,7 @@ if(! -d "$opt_srcdir/libmysqld")
   if ($opt_autotest)
   {
     print("compile-cluster: autotest build requested, extra everything\n");
-    push(@args, "-DWITH_DEBUG=0");
+    push(@args, "-DWITH_DEBUG=1");
     push(@args, "-DWITH_ERROR_INSERT=1");
     push(@args, "-DWITH_UNIT_TESTS=1");
   }
