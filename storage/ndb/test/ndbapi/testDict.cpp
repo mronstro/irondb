@@ -2584,7 +2584,7 @@ int runTableAddAttrsDuring(NDBT_Context *ctx, NDBT_Step *step) {
         CHECK2(dict->alterTable(*oldTable, newTable) == 0,
                "TableAddAttrsDuring failed");
       } else {
-        int nodeId = res.getNode(NdbRestarter::NS_RANDOM);
+        nodeId = res.getNode(NdbRestarter::NS_RANDOM);
         if (l % 2 == 0)
           res.insertErrorInNode(nodeId, 4029);
         else
