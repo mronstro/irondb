@@ -73,6 +73,7 @@ class NdbBackup : public NdbConfig {
 
  private:
   int execRestore(bool _restore_data, bool _restore_meta, bool _restore_epoch,
+                  bool _disable_indexes, bool _enable_indexes,
                   int _node_id, unsigned _backup_id, unsigned error_insert = 0,
                   const char *encryption_password = nullptr,
                   int password_length = -1);
