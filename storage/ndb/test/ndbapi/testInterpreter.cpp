@@ -541,6 +541,11 @@ runNewInterpreterTest(NDBT_Context* ctx, NDBT_Step* step)
   Ndb* pNdb = GETNDB(step);
   NdbDictionary::Dictionary * dict = pNdb->getDictionary();
 
+  if (strcmp(pTab->getName(), "T6") != 0) {
+    ndbout_c("runNewInterpreterTest: skip, table != T6");
+    return NDBT_OK;
+  }
+
   /**
    * Get default record to use for Insert operation.
    * Next get primary key index and the default record for

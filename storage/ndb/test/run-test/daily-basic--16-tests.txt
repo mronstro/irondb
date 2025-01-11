@@ -69,3 +69,7 @@ cmd: testInterpreter
 args: T1
 max-time: 180
 
+cmd: testInterpreter
+args: T6
+max-time: 180
+
