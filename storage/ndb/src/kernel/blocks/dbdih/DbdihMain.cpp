@@ -112,7 +112,7 @@ static const Uint32 WaitTableStateChangeMillis = 1;
 //#define DEBUG_PAUSE 1
 //#define DEBUG_REMOVE_NODE 1
 //#define DEBUG_LCP_QUEUED 1
-//#define DEBUG_MULTI_TRP 1
+#define DEBUG_MULTI_TRP 1
 //#define DEBUG_NODE_STOP 1
 //#define DEBUG_REDO_CONTROL 1
 //#define DEBUG_LCP 1
