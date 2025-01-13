@@ -559,8 +559,10 @@ const Uint32 LCP_ScanNo = 254;
 const Uint32 Backup_ScanNo = 255;
 
 #ifndef NDBD_TRACENR
+#ifndef ERROR_INSERT
 #if defined VM_TRACE
 #define NDBD_TRACENR
+#endif
 #endif
 #endif
 
