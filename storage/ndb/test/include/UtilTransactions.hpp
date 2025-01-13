@@ -34,11 +34,15 @@ class UtilTransactions {
  public:
   Uint64 m_util_latest_gci{0};
   Uint32 get_high_latest_gci() {
+#ifndef ERROR_INSERT
     assert(m_util_latest_gci != 0);
+#endif
     return Uint32(Uint64(m_util_latest_gci >> 32));
   }
   Uint32 get_low_latest_gci() {
+#ifndef ERROR_INSERT
     assert(m_util_latest_gci != 0);
+#endif
     return Uint32(Uint64(m_util_latest_gci & 0xFFFFFFFF));
   }
   UtilTransactions(const NdbDictionary::Table &,
