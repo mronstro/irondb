@@ -49,7 +49,7 @@ TransactionMemory=350M
 MaxNoOfConcurrentScans = 100
 MaxNoOfSavedMessages= 5
 NoOfFragmentLogFiles = 8
-FragmentLogFileSize = 64M
+FragmentLogFileSize = 128M
 CompressedLCP=1
 CompressedBackup=1
 ODirect=1
@@ -67,7 +67,7 @@ TransactionDeadlockDetectionTimeout=5000
 
 SharedGlobalMemory=350M
 DiskPageBufferMemory=256M
-InitialLogfileGroup=undo_buffer_size=64M;undofile01.dat:512M;undofile02.dat:512M
+InitialLogfileGroup=undo_buffer_size=64M;undofile01.dat:768M;undofile02.dat:768M
 InitialTablespace=datafile01.dat:256M;datafile02.dat:256M
 TimeBetweenWatchDogCheckInitial=60000
 
