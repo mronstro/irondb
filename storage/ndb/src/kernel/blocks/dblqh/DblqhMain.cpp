@@ -13146,7 +13146,7 @@ void Dblqh::execCOMMIT(Signal *signal) {
     if (tcConnectptr.p->tableref > 2) {
       jam();
       g_eventLogger->info("LQH %u delaying commit", instance());
-      sendSignalWithDelay(cownref, GSN_COMMIT, signal, 200,
+      sendSignalWithDelay(cownref, GSN_COMMIT, signal, 1000,
                           signal->getLength());
       return;
     }
@@ -13349,7 +13349,7 @@ void Dblqh::execCOMPLETE(Signal *signal) {
     if (tcConnectptr.p->tableref > 2) {
       jam();
       g_eventLogger->info("LQH %u delaying complete", instance());
-      sendSignalWithDelay(cownref, GSN_COMPLETE, signal, 200,
+      sendSignalWithDelay(cownref, GSN_COMPLETE, signal, 1000,
                           signal->getLength());
       return;
     }
