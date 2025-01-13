@@ -1,5 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+   Copyright (c) 2024, 2025, Hopsworks and/or its affiliates.
     All rights reserved. Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
