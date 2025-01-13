@@ -2801,6 +2801,17 @@ expand_dyn_part(Dbtup::KeyReqStruct::Var_data *dst,
   Uint32 *dst_bm_ptr= (Uint32*)dst->m_dyn_data_ptr;
   Uint32 bm_len = row_len ? (* src & Dbtup::DYN_BM_LEN_MASK) : 0;
 
+#ifdef VM_TRACE
+  if (bm_len > max_bmlen) {
+    g_eventLogger->info("bm_len: %u, max_bmlen: %u, row_len: %u"
+                        ", *src = %x, mask: %x",
+                        bm_len,
+                        max_bmlen,
+                        row_len,
+                        *src,
+                        Dbtup::DYN_BM_LEN_MASK);
+  }
+#endif
   assert(bm_len <= max_bmlen);
 
   if (bm_len > 0) memcpy(dst_bm_ptr, src, 4 * bm_len);
