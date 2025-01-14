@@ -30,6 +30,7 @@
 
 #ifndef PINK_SRC_PINK_EPOLL_H_
 #define PINK_SRC_PINK_EPOLL_H_
+#include <mutex>
 #include <queue>
 #include <vector>
 #ifdef __APPLE__
@@ -75,7 +76,9 @@ class PinkEpoll {
   PinkItem notify_queue_pop();
 
   bool Register(const PinkItem& it, bool force);
-  bool Deregister(const PinkItem& it) { return false; }
+  bool Deregister([[maybe_unused]]/*todo remove?*/ const PinkItem& it) {
+    return false;
+  }
 
  private:
   int epfd_;

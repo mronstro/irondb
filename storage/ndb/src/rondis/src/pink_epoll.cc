@@ -102,12 +102,16 @@ int PinkEpoll::PinkAddEvent(const int fd, const int mask) {
 #else
   struct epoll_event ee;
   ee.data.fd = fd;
+  // todo fix: The following uses ee.events uninitialized, and writes to it
+  // right before it is overwritten.
+  /*
   if (mask & kRead) {
     ee.events |= EPOLLIN;
   }
   if (mask & kWrite) {
     ee.events |= EPOLLOUT;
   }
+  */
   ee.events = mask;
   return epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ee);
 #endif

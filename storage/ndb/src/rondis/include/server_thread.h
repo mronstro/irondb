@@ -176,7 +176,8 @@ class ServerThread : public Thread {
 
   virtual void HandleNewConn(int connfd, const std::string& ip_port) = 0;
 
-  virtual void SetQueueLimit(int queue_limit) { }
+  virtual void SetQueueLimit([[maybe_unused]]/*todo remove?*/
+                             int queue_limit) { }
 
   virtual ~ServerThread();
 

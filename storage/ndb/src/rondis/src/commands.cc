@@ -6,6 +6,7 @@
 #include <ndbapi/NdbApi.hpp>
 #include <ndbapi/Ndb.hpp>
 #include <assert.h>
+#include <random>
 
 #include "db_operations.h"
 #include "commands.h"
@@ -172,7 +173,10 @@ static void
 rand_key(struct KeyStorage *key_store,
          const char **key_str,
          Uint32 &key_len) {
-  Uint32 rand_number = arc4random();
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
+  static std::uniform_int_distribution<Uint32> dist(0, UINT32_MAX);
+  Uint32 rand_number = dist(gen);
   rand_number = rand_number % RAND_CONSTANT;
   char *new_key_str = &key_store->m_key_buf[0];
   Uint32 new_len = snprintf(new_key_str,
@@ -255,9 +259,10 @@ static int send_value_delete(std::string *response,
                              struct GetControl *get_ctrl) {
   Uint32 i = 0;
   do {
-    int ret_code = prepare_delete_value_row(response,
-                                            key_store,
-                                            key_store->m_num_rw_rows);
+    [[maybe_unused]]/*todo remove?*/ int ret_code =
+      prepare_delete_value_row(response,
+                               key_store,
+                               key_store->m_num_rw_rows);
     key_store->m_num_rw_rows++;
     i++;
     if (key_store->m_num_rw_rows == key_store->m_num_rows) {
@@ -348,7 +353,6 @@ static int del_complex_rows(Ndb *ndb,
         return 1;
       }
       get_ctrl->m_num_transactions++;
-      Uint32 row_state = 0;
       int ret_code = prepare_complex_delete_row(response,
                                                 tab,
                                                 &key_storage[inx]);
@@ -387,7 +391,6 @@ static int del_complex_rows(Ndb *ndb,
                  ", current_finished_in_loop: %u, ndb: %p\n",
       finished, current_finished_in_loop, ndb));
     current_finished_in_loop += finished;
-    Uint32 prev_current_finished = current_finished_in_loop;
     if (get_ctrl->m_num_keys_failed > 0) return 0;
     int ret_code = send_next_delete_batch(response,
                                           key_storage,
@@ -424,7 +427,6 @@ static int del_simple_rows(Ndb *ndb,
     }
     get_ctrl->m_num_transactions++;
     get_ctrl->m_num_keys_outstanding++;
-    Uint32 row_state = 0;
     int ret_code = prepare_simple_delete_row(response,
                                              tab,
                                              &key_storage[inx]);
@@ -658,7 +660,6 @@ static int send_value_write(std::string *response,
                             struct KeyStorage *key_store,
                             struct GetControl *get_ctrl) {
   Uint32 i = 0;
-  Uint32 value_row_index = key_store->m_first_value_row;
   do {
     int ret_code = prepare_set_value_row(response,
                                          key_store);
@@ -911,7 +912,6 @@ void rondb_mset(Ndb *ndb,
   num_keys = num_keys / 2;
   const NdbDictionary::Dictionary *dict;
   const NdbDictionary::Table *tab = nullptr;
-  NdbTransaction *trans = nullptr;
   struct KeyStorage *key_storage;
   key_storage = (struct KeyStorage*)malloc(
     sizeof(struct KeyStorage) * num_keys);
@@ -953,8 +953,16 @@ void rondb_mset(Ndb *ndb,
     }
     key_storage[i].m_key_str = key_str;
     key_storage[i].m_key_len = key_len;
-    key_storage[i].m_value_ptr = (char*)argv[arg_index_val].c_str();
+
+    // todo fix memory handling for m_value_ptr
+    key_storage[i].m_value_ptr = (char*) malloc(argv[arg_index_val].size() + 1);
+    if(key_storage[i].m_value_ptr == nullptr) {
+      abort();
+    }
+    memcpy(key_storage[i].m_value_ptr, argv[arg_index_val].c_str(), argv[arg_index_val].size());
+    key_storage[i].m_value_ptr[argv[arg_index_val].size()] = '\0';
     key_storage[i].m_value_size = argv[arg_index_val].size();
+
     key_storage[i].m_header_len = 0;
     key_storage[i].m_first_value_row = 0;
     key_storage[i].m_current_pos = 0;
@@ -1112,7 +1120,6 @@ static int send_value_read(std::string *response,
   do {
     struct value_table *value_row =
       &get_ctrl->m_value_rows[value_row_index + i];
-    struct key_table *key_row = &key_store->m_key_row;
       value_row->rondb_key = key_store->m_key_row.rondb_key;
     value_row->ordinal = key_store->m_num_rw_rows;
     int ret_code = prepare_get_value_row(response,
@@ -1332,7 +1339,6 @@ void rondb_mget(Ndb *ndb,
   assert(num_keys > 0);
   const NdbDictionary::Dictionary *dict;
   const NdbDictionary::Table *tab = nullptr;
-  NdbTransaction *trans = nullptr;
   struct KeyStorage *key_storage;
   key_storage = (struct KeyStorage*)malloc(
     sizeof(struct KeyStorage) * num_keys);

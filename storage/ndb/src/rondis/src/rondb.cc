@@ -66,7 +66,7 @@ int initialize_ndb_objects(const char *connect_string, int num_ndb_objects) {
     }
     printf("RonDB data node connection nr. %d is ready\n", i);
   }
-  for (unsigned int j = 0; j < num_ndb_objects; j++) {
+  for (int j = 0; j < num_ndb_objects; j++) {
     int connection_num = j % MAX_CONNECTIONS;
     Ndb *ndb = new Ndb(rondb_conn[connection_num], REDIS_DB_NAME);
     if (ndb == nullptr) {

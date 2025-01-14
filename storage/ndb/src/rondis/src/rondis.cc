@@ -113,7 +113,8 @@ public:
         const std::string &ip_port,
         Thread *thread,
         void *worker_specific_data,
-        pink::PinkEpoll *pink_epoll = nullptr) const
+        [[maybe_unused]]/*todo remove?*/ pink::PinkEpoll *pink_epoll = nullptr
+    ) const override
     {
         return std::make_shared<RondisConn>(connfd, ip_port, thread, worker_specific_data);
     }
