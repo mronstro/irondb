@@ -27,8 +27,8 @@
 bool printCREATE_TABLE_REQ(FILE *output, const Uint32 *theData, Uint32 len,
                            Uint16) {
   if (len < CreateTableReq::SignalLength) {
-    assert(false);
-    return false;
+    fprintf(output, "CREATE_TABLE_REQ too short %u (%u)\n",
+      len, CreateTableReq::SignalLength);
   }
 
   const CreateTableReq *sig = (const CreateTableReq *)theData;
@@ -44,8 +44,8 @@ bool printCREATE_TABLE_REQ(FILE *output, const Uint32 *theData, Uint32 len,
 bool printCREATE_TABLE_CONF(FILE *output, const Uint32 *theData, Uint32 len,
                             Uint16) {
   if (len < CreateTableConf::SignalLength) {
-    assert(false);
-    return false;
+    fprintf(output, "CREATE_TABLE_CONF too short %u (%u)\n",
+      len, CreateTableConf::SignalLength);
   }
 
   const CreateTableConf *sig = (const CreateTableConf *)theData;
@@ -62,8 +62,8 @@ bool printCREATE_TABLE_CONF(FILE *output, const Uint32 *theData, Uint32 len,
 bool printCREATE_TABLE_REF(FILE *output, const Uint32 *theData, Uint32 len,
                            Uint16) {
   if (len < CreateTableRef::SignalLength) {
-    assert(false);
-    return false;
+    fprintf(output, "CREATE_TABLE_REF too short %u (%u)\n",
+      len, CreateTableRef::SignalLength);
   }
 
   const CreateTableRef *sig = (const CreateTableRef *)theData;
