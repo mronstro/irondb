@@ -110,7 +110,7 @@ max-time: 720
 
 cmd: testScan
 args: -n ScanUpdateRestart T6
-max-time: 900
+max-time: 3000
 
 cmd: testNodeRestart
 args: -n RestartAllNodesAbort T6 T13

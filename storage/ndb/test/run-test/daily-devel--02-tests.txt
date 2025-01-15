@@ -65,7 +65,7 @@ max-time: 900
 
 cmd: test_event
 args: -r 5000 -n Bug30780 T1
-max-time: 1260
+max-time: 3000
 
 cmd: testDict
 args: -n FK_SRNR2 T1

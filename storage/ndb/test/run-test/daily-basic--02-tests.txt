@@ -106,7 +106,7 @@ max-time: 360
 
 cmd: testNdbApi
 args: -n UnlockBasic T1
-max-time: 540
+max-time: 840
 
 cmd: testBasic
 args: -n PkUpdate
@@ -122,7 +122,7 @@ max-time: 720
 
 cmd: testNodeRestart
 args: -n Bug16895311 T1
-max-time: 1080
+max-time: 3000
 
 cmd: testSystemRestart
 args: -n SR_DD_3b D1

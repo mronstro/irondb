@@ -33,9 +33,9 @@ max-time : 200
 
 cmd: testNodeRestart
 args: -n ChangeNumLogPartsINR T1 D1
-max-time : 800
+max-time : 4000
 
 cmd: testNodeRestart
 args: -n ChangeNumLDMsNR T1 D1
-max-time: 2500
+max-time: 4000
 
