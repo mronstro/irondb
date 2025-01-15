@@ -52,8 +52,8 @@
  * than others.
 */
 int initialize_ndb_objects(const char *connect_string, int num_ndb_objects) {
-  Ndb_cluster_connection *rondb_conn[MAX_CONNECTIONS];
-  for (unsigned int i = 0; i < MAX_CONNECTIONS; i++) {
+  Ndb_cluster_connection *rondb_conn[RONDIS_MAX_CONNECTIONS];
+  for (unsigned int i = 0; i < RONDIS_MAX_CONNECTIONS; i++) {
     rondb_conn[i] = new Ndb_cluster_connection(connect_string);
     if (rondb_conn[i]->connect() != 0) {
       printf("Failed with RonDB MGMd connection nr. %d\n", i);
@@ -67,7 +67,7 @@ int initialize_ndb_objects(const char *connect_string, int num_ndb_objects) {
     printf("RonDB data node connection nr. %d is ready\n", i);
   }
   for (int j = 0; j < num_ndb_objects; j++) {
-    int connection_num = j % MAX_CONNECTIONS;
+    int connection_num = j % RONDIS_MAX_CONNECTIONS;
     Ndb *ndb = new Ndb(rondb_conn[connection_num], REDIS_DB_NAME);
     if (ndb == nullptr) {
       printf("Failed creating Ndb object nr. %d for"

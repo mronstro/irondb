@@ -44,11 +44,15 @@ constexpr const char* const usageHelp =
 #include <ndb_opts.h>
 #include <NdbMutex.h>
 
+#include "rondis_thread.h"
+
 #include <cstdio>
 #include <iostream>
 #include <sys/errno.h>
 #include <unistd.h>
 #include <csignal>
+
+using namespace pink;
 
 // Cleanup logic
 static bool g_did_ndb_init = false;
@@ -57,12 +61,20 @@ static bool g_did_start_fs_cache = false;
 static const char* g_pidfile = nullptr;
 static RonDBConnection* g_rondbConnection = nullptr;
 static bool g_drogon_running = false;
-static int g_deferred_exit_code = 0;
+static ConnFactory* g_rondis_conn_factory = nullptr;
+static RondisHandle* g_rondis_handle = nullptr;
+static ServerThread* g_rondis_thread = nullptr;
+static bool g_rondis_running = false;
+static int g_exit_code = 0;
 static TTLPurger* g_ttl_purger = nullptr;
 NdbMutex *globalConfigsMutex = nullptr;
 
-static void do_exit(int exit_code) {
-  assert(!g_drogon_running);
+static void do_exit() {
+  if (g_drogon_running) {
+    printf("Quitting Drogon...\n");
+    drogon::app().quit();
+    return;
+  }
   if (jsonParsers != nullptr) {
     delete[] jsonParsers;
     jsonParsers = nullptr;
@@ -72,6 +84,26 @@ static void do_exit(int exit_code) {
     if(remove(g_pidfile) != 0) {
       printf("Failed to remove pidfile %s: %s\n", g_pidfile, strerror(errno));
     }
+  }
+  if (g_rondis_running) {
+    g_rondis_thread->StopThread();
+    g_rondis_running = false;
+  }
+  if (g_rondis_thread) {
+    delete g_rondis_thread;
+    g_rondis_thread = nullptr;
+  }
+  if (g_rondis_handle) {
+    delete g_rondis_handle;
+    g_rondis_handle = nullptr;
+  }
+  if (g_rondis_conn_factory) {
+    delete g_rondis_conn_factory;
+    g_rondis_conn_factory = nullptr;
+  }
+  if (g_ttl_purger != nullptr) {
+    delete g_ttl_purger;
+    g_ttl_purger = nullptr;
   }
   if (g_did_start_api_key_cache)
     stop_api_key_cache();
@@ -84,29 +116,24 @@ static void do_exit(int exit_code) {
   NdbMutex_Destroy(globalConfigsMutex);
   if (g_did_ndb_init)
     ndb_end(0);
-  if (exit_code != 0) {
-    printf("rdrs2: Exit with code %d.\n", exit_code);
+  if (g_exit_code != 0) {
+    printf("rdrs2: Exit with code %d.\n", g_exit_code);
   }
-  exit(exit_code);
-}
-static void before_drogon_run() {
-  g_drogon_running = true;
-  g_ttl_purger = TTLPurger::CreateTTLPurger();
-  g_ttl_purger->Run();
-}
-static void after_drogon_run() {
-  g_drogon_running = false;
-  if (g_ttl_purger != nullptr) {
-    delete g_ttl_purger;
-  }
-  if (g_deferred_exit_code != 0) {
-    do_exit(g_deferred_exit_code);
-  }
+  exit(g_exit_code);
 }
 static void handle_signal(int signal) {
   switch (signal) {
+    case SIGHUP:
+      printf("Received and ignored SIGHUP.\n");
+      return;
+    case SIGPIPE:
+      printf("Received and ignored SIGPIPE.\n");
+      return;
     case SIGINT:
       printf("Received SIGINT.\n");
+      break;
+    case SIGQUIT:
+      printf("Received SIGQUIT.\n");
       break;
     case SIGTERM:
       printf("Received SIGTERM.\n");
@@ -115,26 +142,20 @@ static void handle_signal(int signal) {
       printf("Received unexpected signal %d\n", signal);
       break;
   }
-  int exit_code = 128 + signal; // Because it's tradition.
+  g_exit_code = 128 + signal; // Because it's tradition.
   if (signal == SIGTERM) {
-    exit_code = 0; // SIGTERM is used for clean exit
+    g_exit_code = 0; // SIGTERM is used for clean exit
   }
-  if (g_drogon_running) {
-    printf("Quitting Drogon...\n");
-    drogon::app().quit();
-    if (exit_code != 0) {
-      g_deferred_exit_code = exit_code;
-    }
-  }
-  else {
-    do_exit(exit_code);
-  }
+  do_exit();
 }
 
 
 int main(int argc, char *argv[]) {
-  signal(SIGTERM, handle_signal);
+  signal(SIGHUP, handle_signal);
+  signal(SIGPIPE, handle_signal);
   signal(SIGINT, handle_signal);
+  signal(SIGQUIT, handle_signal);
+  signal(SIGTERM, handle_signal);
 
   ndb_init();
   g_did_ndb_init = true;
@@ -167,11 +188,13 @@ int main(int argc, char *argv[]) {
         strcmp(argv[i], "--config") == 0) {
       if (i + 1 == argc) {
         std::cerr << "Error: --config option requires one argument." << std::endl;
-        do_exit(1);
+        g_exit_code = 1;
+        do_exit();
       }
       if (seenOptConfig) {
         std::cerr << "Error: --config option can only be used once." << std::endl;
-        do_exit(1);
+        g_exit_code = 1;
+        do_exit();
       }
       configFile = argv[++i];
       seenOptConfig = true;
@@ -192,7 +215,8 @@ int main(int argc, char *argv[]) {
       continue;
     }
     std::cerr << "Error: Unknown option " << argv[i] << std::endl;
-    do_exit(1);
+    g_exit_code = 1;
+    do_exit();
   }
 
   if (optVersion || optHelp) {
@@ -204,7 +228,7 @@ int main(int argc, char *argv[]) {
     printf("\n%s", usageHelp);
   }
   if ((optVersion || optHelp) && !optPrintConfig) {
-    do_exit(0);
+    do_exit();
   }
 
   RS_Status status = AllConfigs::init(configFile);
@@ -213,13 +237,14 @@ int main(int argc, char *argv[]) {
     std::cerr << "Error while initializing configuration.\n"
               << "HTTP code " << status.http_code << '\n'
               << status.message << '\n';
-    do_exit(1);
+    g_exit_code = 1;
+    do_exit();
   }
 
   if (optPrintConfig) {
     printJson(globalConfigs, std::cout, 0, true);
     std::cout << '\n';
-    do_exit(0);
+    do_exit();
   }
 
   if (!globalConfigs.pidfile.empty()) {
@@ -229,7 +254,8 @@ int main(int argc, char *argv[]) {
     FILE *pidFILE = fopen(g_pidfile, "w");
     if (pidFILE == nullptr) {
       printf("Failed to open pidfile %s: %s\n", g_pidfile, strerror(errno));
-      do_exit(1);
+      g_exit_code = 1;
+      do_exit();
     }
     int pid = getpid();
     fprintf(pidFILE, "%d\n", pid);
@@ -245,7 +271,8 @@ int main(int argc, char *argv[]) {
   jsonParsers = new JSONParser[globalConfigs.rest.numThreads];
   if (jsonParsers == nullptr) {
     std::cerr << "Failed to allocate memory for JSON parsers.\n";
-    do_exit(1);
+    g_exit_code = 1;
+    do_exit();
   }
 
   // connect to rondb
@@ -254,7 +281,36 @@ int main(int argc, char *argv[]) {
                                           globalConfigs.rest.numThreads);
   if (g_rondbConnection == nullptr) {
     std::cerr << "Failed to allocate memory for RonDB connection.\n";
-    do_exit(1);
+    g_exit_code = 1;
+    do_exit();
+  }
+
+  // Start TTL purger
+  g_ttl_purger = TTLPurger::CreateTTLPurger();
+  g_ttl_purger->Run();
+
+  // Start rondis
+  if (globalConfigs.rondis.enable) {
+    g_rondis_conn_factory = new RondisConnFactory();
+    g_rondis_handle = new RondisHandle();
+    // todo use globalConfigs.rondis.databases to configure individual databases.
+    // todo let rondis use g_rondbConnection
+    // todo if thread exits on its own accord (without StopThread() called in
+    // do_exit), make sure to set g_rondis_running = false and then call
+    // do_exit().
+    g_rondis_thread = NewDispatchThread(globalConfigs.rondis.serverPort,
+                                        globalConfigs.rondis.numThreads,
+                                        g_rondis_conn_factory,
+                                        1000,
+                                        1000,
+                                        g_rondis_handle);
+    if (g_rondis_thread->StartThread() != 0)
+    {
+        printf("Error starting rondis thread\n");
+        g_exit_code = 1;
+        do_exit();
+    }
+    g_rondis_running = true;
   }
 
   if (globalConfigs.security.tls.enableTLS) {
@@ -268,7 +324,8 @@ int main(int argc, char *argv[]) {
       std::cerr << "Error while generating TLS configuration.\n"
                 << "HTTP code " << status.http_code << '\n'
                 << status.message << '\n';
-      do_exit(1);
+      g_exit_code = 1;
+      do_exit();
     }
   }
 
@@ -291,8 +348,8 @@ int main(int argc, char *argv[]) {
   drogon::app().setTermSignalHandler([]() {
     handle_signal(SIGTERM);
   });
-  before_drogon_run();
+  g_drogon_running = true;
   drogon::app().run();
-  after_drogon_run();
-  do_exit(0);
+  g_drogon_running = false;
+  do_exit();
 }

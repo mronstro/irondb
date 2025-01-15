@@ -40,6 +40,7 @@ ADD_CONVENIENCE_LIBRARY(rondis
   redis_conn.cc
   redis_parser.cc
   rondb.cc
+  rondis_thread.cc
   server_socket.cc
   server_thread.cc
   table_definitions.cc

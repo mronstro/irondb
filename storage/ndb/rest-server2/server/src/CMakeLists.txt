@@ -128,6 +128,7 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_SOURCE_DIR}/include
   ${CMAKE_SOURCE_DIR}/storage/ndb/src/ndbapi
   ${CMAKE_SOURCE_DIR}/storage/ndb/src/mgmapi
+  ${CMAKE_SOURCE_DIR}/storage/ndb/src/rondis/include
   ${CMAKE_SOURCE_DIR}/storage/ndb/include/util
   ${CMAKE_SOURCE_DIR}/include)
 INCLUDE_DIRECTORIES(${RDRS_DROGON_INCLUDE_DIR})
@@ -149,7 +150,8 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME}
                       ndbgeneral
                       rdrs_string
                       mysqlclient
-                      ronsql)
+                      ronsql
+                      rondis)
 
 INSTALL(TARGETS ${PROJECT_NAME}
     DESTINATION ${INSTALL_BINDIR} COMPONENT Server)
