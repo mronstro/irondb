@@ -383,6 +383,7 @@ my @rdrs_rules = (
   { 'pid-file'      => \&fix_pidfile },
   { 'bind-address'  => \&fix_bind_address_rdrs },
   { 'port'          => \&fix_port },
+  { 'rondisport'    => \&fix_port },
   { 'ssl-ca'        => \&fix_ssl_ca },
   { 'ssl-cert'      => \&fix_ssl_server_cert },
   { 'ssl-key'       => \&fix_ssl_server_key },
