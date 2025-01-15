@@ -6417,6 +6417,8 @@ void Dbdict::handleTabInfo(SimpleProperties::Reader &it,
         attrPtr.p->attributeId == tableDesc.TTLColumnNo) {
       ndbrequire(tableDesc.TTLSec <= RNIL);
       ndbrequire(AttributeDescriptor::getType(attrPtr.p->attributeDescriptor)
+                 == DictTabInfo::ExtTimestamp2 ||
+                 AttributeDescriptor::getType(attrPtr.p->attributeDescriptor)
                  == DictTabInfo::ExtDatetime2);
 #ifdef TTL_DEBUG
       g_eventLogger->info("Zart, [DICT]TTL validation on TTL attrId passed. "

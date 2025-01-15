@@ -1698,7 +1698,7 @@ def case_29_pre(A_conn, B_conn):
         cur.execute("DROP TABLE IF EXISTS sz1")
         cur.execute("CREATE TABLE test.sz1 ("
                     "col_a INT, "
-                    "col_b DATETIME, "
+                    "col_b TIMESTAMP, "
                     "col_c INT, "
                     "PRIMARY KEY(col_a)) "
                     "ENGINE = NDB, "
@@ -2462,7 +2462,7 @@ def case_40_pre(A_conn, B_conn):
         cur.execute("DROP TABLE IF EXISTS sz1")
         cur.execute("CREATE TABLE test.sz1 ("
                     "col_a INT, "
-                    "col_b DATETIME, "
+                    "col_b TIMESTAMP, "
                     "col_c INT)"
                     "ENGINE = NDB, "
                     "COMMENT=\"NDB_TABLE=FULLY_REPLICATED=1,TTL=10@col_b\"")
@@ -2639,7 +2639,7 @@ def case_42_pre(A_conn, B_conn):
         cur.execute("DROP TABLE IF EXISTS sz1")
         cur.execute("CREATE TABLE test.sz1 ("
                     "col_a INT, "
-                    "col_b DATETIME, "
+                    "col_b TIMESTAMP, "
                     "col_c INT)"
                     "ENGINE = NDB, "
                     "COMMENT=\"NDB_TABLE=FULLY_REPLICATED=1,TTL=10@col_b\"")
@@ -2865,20 +2865,20 @@ def case_46_pre(A_conn, B_conn):
         cur.execute("USE test")
         cur.execute("CREATE TABLE test.sz1 ("
                     "col_a INT, "
-                    "col_b DATETIME, "
+                    "col_b TIMESTAMP, "
                     "col_c INT, "
                     "PRIMARY KEY(col_a)) "
                     "ENGINE = NDB, "
                     "COMMENT=\"NDB_TABLE=TTL=10@col_b\"")
         cur.execute("CREATE TABLE test.sz2 ("
                     "col_a INT, "
-                    "col_b DATETIME, "
+                    "col_b TIMESTAMP, "
                     "col_c INT)"
                     "ENGINE = NDB, "
                     "COMMENT=\"NDB_TABLE=TTL=10@col_b\"")
         cur.execute("CREATE TABLE test.sz3 ("
                     "col_a INT, "
-                    "col_b DATETIME, "
+                    "col_b TIMESTAMP, "
                     "col_c INT, "
                     "PRIMARY KEY(col_a)) "
                     "ENGINE = NDB")
@@ -3191,7 +3191,7 @@ if __name__ == '__main__':
         cur.execute("CREATE DATABASE IF NOT EXISTS test")
         cur.execute("CREATE TABLE test.sz ("
                     "col_a INT, "
-                    "col_b DATETIME, "
+                    "col_b TIMESTAMP, "
                     "col_c INT, "
                     "PRIMARY KEY(col_a)) "
                     "ENGINE = NDB, "

@@ -98,7 +98,7 @@ class TTLPurger {
   NdbThread* schema_watcher_;
 
   bool GetShard(Int32* shard, Int32* n_purge_nodes, bool update_objects);
-  static Int64 GetNow(unsigned char* encoded_now);
+  static Int64 GetNow(unsigned char* encoded_now, bool timestamp);
   bool UpdateLease(const unsigned char* encoded_now);
   bool IsNodeAlive(const unsigned char* encoded_last_active);
   Uint32 AdjustBatchSize(Uint32 curr_batch_size,

@@ -9761,9 +9761,10 @@ int ha_ndbcluster::create(const char *path [[maybe_unused]],
         Field *const field = table->field[i];
         if (!my_strcasecmp(system_charset_info,
             field->field_name, ttl_column.c_str())) {
-          if (field->real_type() != MYSQL_TYPE_DATETIME2) {
+          if (field->real_type() != MYSQL_TYPE_DATETIME2 &&
+              field->real_type() != MYSQL_TYPE_TIMESTAMP2) {
             return create.failed_illegal_create_option(
-                "Invalid TTL format, column type must be DATETIME");
+                "Invalid TTL format, column type must be DATETIME/TIMESTAMP");
           }
           if (field->is_hidden() || !field->stored_in_db) {
             return create.failed_illegal_create_option(
@@ -16394,9 +16395,10 @@ bool ha_ndbcluster::inplace_parse_comment(NdbDictionary::Table *new_tab,
         *reason = "Invalid TTL format, column name"
                  "must match a real column";
         return true;
-      } else if (ttl_col->getType() != NdbDictionary::Column::Type::Datetime2) {
+      } else if (ttl_col->getType() != NdbDictionary::Column::Type::Datetime2 &&
+                 ttl_col->getType() != NdbDictionary::Column::Type::Timestamp2) {
         *reason = "Invalid TTL format, column type "
-                 "must be DATETIME";
+                 "must be DATETIME/TIMESTAMP";
         return true;
       }
       ndb_log_info("[API]parse TTL successfully: TTL = %u sec, "

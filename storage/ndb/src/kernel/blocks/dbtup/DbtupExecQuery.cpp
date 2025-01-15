@@ -2104,7 +2104,7 @@ int Dbtup::checkTTL(Tablerec* regTabPtr,
                                 AttributeDescriptor::getSizeInBytes(TattrDesc1);
   [[maybe_unused]] const Uint32 size_in_words =
                                 AttributeDescriptor::getSizeInWords(TattrDesc1);
-  ndbrequire(type_id == NDB_TYPE_DATETIME2);
+  ndbrequire(type_id == NDB_TYPE_DATETIME2 || type_id == NDB_TYPE_TIMESTAMP2);
 #ifdef TTL_DEBUG
   g_eventLogger->info("Zart, handleXXXReq TTL check, table_id: %u, "
       "type_id: %u, size: %u, size_in_bytes: %u, "
@@ -2145,11 +2145,38 @@ int Dbtup::checkTTL(Tablerec* regTabPtr,
        * Zart
        * Just need to parse to second part.
        */
-      int64_t dt_bin = my_datetime_packed_from_binary(
-          reinterpret_cast<const unsigned char*>(
-            ahOut->getDataPtr()), 0);
       MYSQL_TIME dt;
-      TIME_from_longlong_datetime_packed(&dt, dt_bin);
+      if (type_id == NDB_TYPE_TIMESTAMP2) {
+        my_timeval timeval;
+        my_timestamp_from_binary(&timeval,
+            reinterpret_cast<const unsigned char*>(
+              ahOut->getDataPtr()), 0);
+        struct tm tmp_tm;
+        const time_t tmp_t = (time_t)timeval.m_tv_sec;
+        gmtime_r(&tmp_t, &tmp_tm);
+        // gmt_sec_to_TIME
+        if (tmp_tm.tm_year <= 0) {  // Windows sets -1 if timestamp is too high.
+          dt.year = 0;
+          dt.month = 0;
+          dt.day = 0;
+          dt.hour = 0;
+          dt.minute = 0;
+          dt.second = 0;
+          dt.second_part = 0;
+          dt.time_type = MYSQL_TIMESTAMP_DATETIME;
+        } else {
+          localtime_to_TIME(&dt, &tmp_tm);
+          dt.time_type = MYSQL_TIMESTAMP_DATETIME;
+          if (dt.second == 60 || dt.second == 61) {
+            dt.second = 59;
+          }
+        }
+      } else {
+        int64_t dt_bin = my_datetime_packed_from_binary(
+            reinterpret_cast<const unsigned char*>(
+              ahOut->getDataPtr()), 0);
+        TIME_from_longlong_datetime_packed(&dt, dt_bin);
+      }
 #ifdef TTL_DEBUG
       g_eventLogger->info("Zart, Parsed TTL column data: "
           "%u.%u.%u %u:%u:%u",

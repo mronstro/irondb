@@ -28,6 +28,8 @@
 #include "include/my_murmur3.h"
 #include "include/my_systime.h"
 #include "include/my_time.h"
+#include "include/myisampack.h"
+#include "sql/tzfile.h"
 #include "NdbSleep.h"
 
 #include <EventLogger.hpp>
@@ -45,6 +47,7 @@ TTLPurger::TTLPurger() :
   schema_watcher_running_(false), schema_watcher_(nullptr),
   purge_worker_running_(false), purge_worker_(nullptr),
   purge_worker_exit_(false) {
+    ttl_cache_.clear();
 }
 
 extern RDRSRonDBConnectionPool *rdrsRonDBConnectionPool;
@@ -165,6 +168,7 @@ retry:
     }
 
     dict = watcher_ndb_->getDictionary();
+    dict->invalidateTable(kSchemaTableName);
     schema_tab = dict->getTable(kSchemaTableName);
     if (schema_tab == nullptr) {
       g_eventLogger->warning("[TTL SWatcher] Failed to get system table: %s"
@@ -174,6 +178,7 @@ retry:
                              dict->getNdbError().message);
       goto err;
     }
+    dict->invalidateTable(kSchemaResTabName);
     schema_res_tab = dict->getTable(kSchemaResTabName);
     if (schema_res_tab == nullptr) {
       g_eventLogger->warning("[TTL SWatcher] Failed to get system table: %s"
@@ -256,6 +261,33 @@ retry:
                            ev_op->getNdbError().code,
                            ev_op->getNdbError().message);
     goto err;
+  }
+
+  // The PurgeWorker requested a retry from the beginning.
+  // Invalidate the previous table objects to avoid using outdated ones.
+  if (!ttl_cache_.empty()) {
+    for (auto iter = ttl_cache_.begin(); iter != ttl_cache_.end(); iter++) {
+      auto pos = iter->first.find('/');
+      if (pos != std::string::npos) {
+        std::string db = iter->first.substr(0, pos);
+        if (watcher_ndb_->setDatabaseName(db.c_str()) != 0) {
+          g_eventLogger->warning("[TTL SWatcher-] Failed to select database: %s"
+                                 ", error: %d(%s). Retry...",
+                                 db.c_str(),
+                                 watcher_ndb_->getNdbError().code,
+                                 watcher_ndb_->getNdbError().message);
+          continue;
+        }
+        g_eventLogger->info("[TTL SWatcher] Remove[4] TTL of table %s "
+                             "in cache: [%u, %u@%u]",
+                             iter->first.c_str(), iter->second.table_id,
+                             iter->second.ttl_sec, iter->second.col_no);
+        if (pos + 1 < iter->first.length()) {
+          std::string table = iter->first.substr(pos + 1);
+          dict->invalidateTable(table.c_str());
+        }
+      }
+    }
   }
 
   // Fetch tables
@@ -723,7 +755,13 @@ bool TTLPurger::UpdateLocalCache(const std::string& db,
   if (tab != nullptr) {
     if (iter != ttl_cache_.end()) {
       if (tab->isTTLEnabled()) {
-        assert(iter->second.table_id == tab->getTableId());
+        if (iter->second.table_id != tab->getTableId()) {
+          g_eventLogger->info("[TTL SWatcher] Catching the ID of the TTL table "
+              "%s.%s changed from %u to %u, updating local cache",
+              db.c_str(), table.c_str(),
+              iter->second.table_id, tab->getTableId());
+          iter->second.table_id = tab->getTableId();
+        }
         g_eventLogger->info("[TTL SWatcher] Update TTL of table %s.%s "
                             "in cache: [%u, %u@%u] -> [%u, %u@%u]",
                             db.c_str(), table.c_str(),
@@ -884,6 +922,35 @@ enum SpecialShardVal {
   kShardFirst = 0
 };
 
+static const uint mon_lengths[2][MONS_PER_YEAR] = {
+    {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
+    {31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}};
+static const uint mon_starts[2][MONS_PER_YEAR] = {
+    {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334},
+    {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}};
+static const uint year_lengths[2] = {DAYS_PER_NYEAR, DAYS_PER_LYEAR};
+#define LEAPS_THRU_END_OF(y) ((y) / 4 - (y) / 100 + (y) / 400)
+static my_time_t sec_since_epoch(int year, int mon, int mday, int hour, int min,
+                                 int sec) {
+  assert(mon > 0 && mon < 13 && year <= 9999);
+  my_time_t days = year * DAYS_PER_NYEAR - EPOCH_YEAR * DAYS_PER_NYEAR +
+                   LEAPS_THRU_END_OF(year - 1) -
+                   LEAPS_THRU_END_OF(EPOCH_YEAR - 1);
+  days += mon_starts[isleap(year)][mon - 1];
+  days += mday - 1;
+
+  const my_time_t result =
+      ((days * HOURS_PER_DAY + hour) * MINS_PER_HOUR + min) * SECS_PER_MIN +
+      sec;
+  return result;
+}
+static my_time_t sec_since_epoch(const MYSQL_TIME &mt) {
+  return sec_since_epoch(static_cast<int>(mt.year), static_cast<int>(mt.month),
+                         static_cast<int>(mt.day), static_cast<int>(mt.hour),
+                         static_cast<int>(mt.minute),
+                         static_cast<int>(mt.second));
+}
+
 void TTLPurger::PurgeWorkerJob() {
   bool purge_trx_started = false;
   bool update_objects = false;
@@ -919,6 +986,7 @@ void TTLPurger::PurgeWorkerJob() {
   MYSQL_TIME datetime;
   Int64 packed_now = 0;
   NdbRecAttr* rec_attr[3];
+  bool use_index = false;
 
   g_eventLogger->info("[TTL PWorker] Started");
   purged_pos_.clear();
@@ -994,7 +1062,7 @@ void TTLPurger::PurgeWorkerJob() {
       continue;
     }
 
-    GetNow(encoded_now);
+    GetNow(encoded_now, false);
     if (shard >= kShardFirst && !UpdateLease(encoded_now)) {
       g_eventLogger->warning("[TTL PWorker] Failed to update the lease");
       goto err;
@@ -1015,7 +1083,7 @@ void TTLPurger::PurgeWorkerJob() {
       }
       purge_trx_started = false;
       {
-        GetNow(encoded_now);
+        GetNow(encoded_now, false);
         if (shard >= kShardFirst && !UpdateLease(encoded_now)) {
           g_eventLogger->warning("[TTL PWorker] Failed to update the lease[2]");
           goto err;
@@ -1102,21 +1170,43 @@ retry_trx:
       }
       purge_trx_started = true;
 
+      use_index = false;
       ttl_index = dict->getIndex(kTTLPurgeIndexName, table_str.c_str());
+      if (ttl_index != nullptr) {
+        const NdbDictionary::Column* ttl_col_index = ttl_index->getColumn(0);
+        if (ttl_col_index != nullptr &&
+              (ttl_col_index->getType() == NdbDictionary::Column::Datetime2 ||
+              ttl_col_index->getType() == NdbDictionary::Column::Timestamp2)) {
+        const NdbDictionary::Column* ttl_col_table =
+               ttl_tab->getColumn(ttl_col_index->getName());
+          if (ttl_col_table != nullptr &&
+               (ttl_col_table->getType() == NdbDictionary::Column::Datetime2 ||
+                ttl_col_table->getType() ==
+                                          NdbDictionary::Column::Timestamp2) &&
+               ttl_col_table->getColumnNo() == static_cast<int>(ttl_col_no)) {
+            use_index = true;
+          }
+        }
+      }
 
       check = 0;
       deletedRows = 0;
-      if (ttl_index != nullptr) {
+      if (use_index) {
         // Found index on ttl column, use it
         log_buf += "[INDEX scan]";
         const NdbDictionary::Column* ttl_col_index = ttl_index->getColumn(0);
-        assert(ttl_col_index != nullptr && ttl_col_index->getType() ==
-               NdbDictionary::Column::Datetime2);
+        assert(ttl_col_index != nullptr &&
+              (ttl_col_index->getType() == NdbDictionary::Column::Datetime2 ||
+              ttl_col_index->getType() == NdbDictionary::Column::Timestamp2));
         const NdbDictionary::Column* ttl_col_table =
                ttl_tab->getColumn(ttl_col_index->getName());
-        assert(ttl_col_table != nullptr && ttl_col_table->getType() ==
-               NdbDictionary::Column::Datetime2 &&
+        assert(ttl_col_table != nullptr &&
+               (ttl_col_table->getType() == NdbDictionary::Column::Datetime2 ||
+                ttl_col_table->getType() ==
+                                          NdbDictionary::Column::Timestamp2) &&
                ttl_col_table->getColumnNo() == static_cast<int>(ttl_col_no));
+        bool type_timestamp = (ttl_col_index->getType() ==
+                               NdbDictionary::Column::Timestamp2);
 
         NdbIndexScanOperation* index_scan_op =
           trans->getNdbIndexScanOperation(ttl_index);
@@ -1162,15 +1252,22 @@ retry_trx:
           }
         }
         if (packed_last != 0) {
-          my_datetime_packed_to_binary(packed_last, encoded_last, 0);
           TIME_from_longlong_datetime_packed(&datetime, packed_last);
           log_buf += std::to_string(TIME_to_ulonglong_datetime(datetime));
+          if (type_timestamp) {
+            MYSQL_TIME tmp;
+            TIME_from_longlong_datetime_packed(&tmp, packed_last);
+            my_timeval tm = {sec_since_epoch(tmp), 0};
+            my_timestamp_to_binary(&tm, encoded_last, 0);
+          } else {
+            my_datetime_packed_to_binary(packed_last, encoded_last, 0);
+          }
         } else {
           memset(encoded_last, 0, 8);
           log_buf += "INF";
         }
         log_buf += " --- ";
-        packed_now = GetNow(encoded_now);
+        packed_now = GetNow(encoded_now, type_timestamp);
         TIME_from_longlong_datetime_packed(&datetime, packed_now);
         log_buf += std::to_string(TIME_to_ulonglong_datetime(datetime));
         log_buf += ")";
@@ -1226,8 +1323,37 @@ retry_trx:
         while ((check = index_scan_op->nextResult(true)) == 0) {
           do {
             memset(encoded_curr_purge, 0, 8);
-            memcpy(encoded_curr_purge, rec_attr[0]->aRef(),
-                   rec_attr[0]->get_size_in_bytes());
+            if (type_timestamp) {
+              my_timeval timestamp;
+              my_timestamp_from_binary(&timestamp,
+                  reinterpret_cast<const unsigned char*>(rec_attr[0]->aRef()),
+                  0);
+              struct tm tmp_tm;
+              const time_t tmp_t = (time_t)timestamp.m_tv_sec;
+              gmtime_r(&tmp_t, &tmp_tm);
+              MYSQL_TIME tmp;
+              if (tmp_tm.tm_year <= 0) {
+                tmp.year = 0;
+                tmp.month = 0;
+                tmp.day = 0;
+                tmp.hour = 0;
+                tmp.minute = 0;
+                tmp.second = 0;
+                tmp.second_part = 0;
+                tmp.time_type = MYSQL_TIMESTAMP_DATETIME;
+              }
+              localtime_to_TIME(&tmp, &tmp_tm);
+              tmp.time_type = MYSQL_TIMESTAMP_DATETIME;
+              if (tmp.second == 60 || tmp.second == 61) {
+                tmp.second = 59;
+              }
+              my_datetime_packed_to_binary(
+                  TIME_to_longlong_datetime_packed(tmp),
+                  encoded_curr_purge, 0);
+            } else {
+              memcpy(encoded_curr_purge, rec_attr[0]->aRef(),
+                     rec_attr[0]->get_size_in_bytes());
+            }
             // std::cerr << "Get a expired row: timestamp = ["
             //   << rec_attr[0]->get_size_in_bytes() << "]";
             // for (Uint32 i = 0; i < rec_attr[0]->get_size_in_bytes(); i++) {
@@ -1321,7 +1447,7 @@ retry_trx:
                                                          = packed_last;
           }
         }
-      } else if (dict->getNdbError().code == 4243) {
+      } else if (dict->getNdbError().code == 4243 || !use_index) {
         // Can't find the index on ttl column, use table instead
         log_buf += "[TABLE scan]";
         scan_op = trans->getNdbScanOperation(ttl_tab);
@@ -1502,6 +1628,31 @@ err:
         g_eventLogger->warning("[TTL PWorker] Has retried for %d times..."
                                "Quit and notify schema worker",
                                kMaxTrxRetryTimes);
+        for (auto iter = local_ttl_cache.begin();
+            iter != local_ttl_cache.end(); iter++) {
+          auto pos = iter->first.find('/');
+          if (pos != std::string::npos) {
+            std::string db = iter->first.substr(0, pos);
+            if (worker_ndb_->setDatabaseName(db.c_str()) != 0) {
+              g_eventLogger->warning("[TTL SWatcher-] "
+                  "Failed to select database: %s"
+                  ", error: %d(%s). Retry...",
+                  db.c_str(),
+                  worker_ndb_->getNdbError().code,
+                  worker_ndb_->getNdbError().message);
+              continue;
+            }
+            g_eventLogger->info("[TTL SWatcher] Remove[5] TTL of table %s "
+                "in cache: [%u, %u@%u]",
+                iter->first.c_str(), iter->second.table_id,
+                iter->second.ttl_sec, iter->second.col_no);
+            if (pos + 1 < iter->first.length()) {
+              std::string table = iter->first.substr(pos + 1);
+              dict->removeCachedTable(table.c_str());
+              dict->invalidateIndex(kTTLPurgeIndexName, table.c_str());
+            }
+          }
+        }
         purge_worker_asks_for_retry_ = true;
         purge_worker_exit_ = true;
         break;
@@ -1682,7 +1833,7 @@ err:
   return false;
 }
 
-Int64 TTLPurger::GetNow(unsigned char* encoded_now) {
+Int64 TTLPurger::GetNow(unsigned char* encoded_now, bool timestamp) {
   assert(encoded_now != nullptr);
   Int64 packed_now = 0;
   memset(encoded_now, 0, 8);
@@ -1704,8 +1855,12 @@ Int64 TTLPurger::GetNow(unsigned char* encoded_now) {
     curr_dt.second = 59;
   }
   packed_now = TIME_to_longlong_datetime_packed(curr_dt);
-  my_datetime_packed_to_binary(packed_now, encoded_now, 0);
 
+  if (timestamp) {
+    mi_int4store(encoded_now, t_now);
+  } else {
+    my_datetime_packed_to_binary(packed_now, encoded_now, 0);
+  }
   return packed_now;
 }
 
