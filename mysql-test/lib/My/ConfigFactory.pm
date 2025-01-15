@@ -102,6 +102,15 @@ sub fix_port {
   return $self->{HOSTS}->{$hostname}++;
 }
 
+sub fix_rondis_port {
+  my ($self, $config, $group_name, $group) = @_;
+  if (($group->if_exist('enable-rondis') // '') ne 'true') {
+    return ''
+  }
+  my $hostname = $group->value('#host');
+  return $self->{HOSTS}->{$hostname}++;
+}
+
 sub fix_admin_port {
   my ($self, $config, $group_name, $group) = @_;
   my $hostname = $group->value('#host');
@@ -383,7 +392,7 @@ my @rdrs_rules = (
   { 'pid-file'      => \&fix_pidfile },
   { 'bind-address'  => \&fix_bind_address_rdrs },
   { 'port'          => \&fix_port },
-  { 'rondisport'    => \&fix_port },
+  { 'rondisport'    => \&fix_rondis_port },
   { 'ssl-ca'        => \&fix_ssl_ca },
   { 'ssl-cert'      => \&fix_ssl_server_cert },
   { 'ssl-key'       => \&fix_ssl_server_key },

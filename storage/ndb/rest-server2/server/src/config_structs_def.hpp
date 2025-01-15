@@ -124,7 +124,7 @@ VECTOR(RondisDatabaseConfig)
 
 CLASS
 (RondisConfig,
- CM(bool, enable, Enable, true, "Whether to enable the Rondis server.")
+ CM(bool, enable, Enable, false, "Whether to enable the Rondis server.")
  CM(std::string, serverIP, ServerIP, "0.0.0.0", "The IP address to listen on.")
  CM(Uint16, serverPort, ServerPort, 6379, "TCP port to listen on.")
  CM(unsigned, numThreads, NumThreads, 16, "Number of rondis threads.")
