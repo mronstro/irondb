@@ -29,8 +29,8 @@
 bool printLQH_TRANSCONF(FILE *output, const Uint32 *theData, Uint32 len,
                         Uint16 /*receiverBlockNo*/) {
   if (len < LqhTransConf::SignalLength) {
-    assert(false);
-    return false;
+    fprintf(output, "Short LQH_TRANSCONF: len: %u, SignalLength: %u\n",
+      len, LqhTransConf::SignalLength);
   }
 
   const LqhTransConf *const sig = (const LqhTransConf *)theData;
