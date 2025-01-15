@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -2801,6 +2801,17 @@ expand_dyn_part(Dbtup::KeyReqStruct::Var_data *dst,
   Uint32 *dst_bm_ptr= (Uint32*)dst->m_dyn_data_ptr;
   Uint32 bm_len = row_len ? (* src & Dbtup::DYN_BM_LEN_MASK) : 0;
 
+#ifdef VM_TRACE
+  if (bm_len > max_bmlen) {
+    g_eventLogger->info("bm_len: %u, max_bmlen: %u, row_len: %u"
+                        ", *src = %x, mask: %x",
+                        bm_len,
+                        max_bmlen,
+                        row_len,
+                        *src,
+                        Dbtup::DYN_BM_LEN_MASK);
+  }
+#endif
   assert(bm_len <= max_bmlen);
 
   if (bm_len > 0) memcpy(dst_bm_ptr, src, 4 * bm_len);
@@ -6311,11 +6322,15 @@ int Dbtup::interpreterNextLab(Signal* signal,
           break;
         }
         case Interpreter::BRANCH_ATTR_OP_ATTR:
+        case Interpreter::BRANCH_ATTR_OP_ATTR + OVERFLOW_OPCODE:
+        case Interpreter::BRANCH_ATTR_OP_ARG:
+        case Interpreter::BRANCH_ATTR_OP_ARG + OVERFLOW_OPCODE:
         case Interpreter::BRANCH_ATTR_OP_PARAM:
-        case Interpreter::BRANCH_ATTR_OP_ARG: {
+        case Interpreter::BRANCH_ATTR_OP_PARAM + OVERFLOW_OPCODE: {
           const Uint32 ins2 = TcurrentProgram[TprogramCounter];
           Uint32 attrId = Interpreter::getBranchCol_AttrId(ins2) << 16;
-          const Uint32 opCode = Interpreter::getOpCode(theInstruction);
+          const Uint32 opCode =
+            Interpreter::getOpCode(theInstruction) % OVERFLOW_OPCODE;
 
           if (tmpHabitant != attrId) {
             Int32 TnoDataR =

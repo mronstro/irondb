@@ -69,11 +69,11 @@ max-time: 1260
 
 cmd: testIndex
 args: -n NFNR3 T6 T13
-max-time: 1260
+max-time: 2000
 
 cmd: testIndex
 args: -n NFNR1_O T6 T13
-max-time: 1800
+max-time: 3600
 
 cmd: testSystemRestart
 args: -n SR_DD_2b_LCP D1

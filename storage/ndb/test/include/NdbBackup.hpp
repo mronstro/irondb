@@ -1,5 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+   Copyright (c) 2024, 2025, Hopsworks and/or its affiliates.
     All rights reserved. Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
@@ -73,6 +74,7 @@ class NdbBackup : public NdbConfig {
 
  private:
   int execRestore(bool _restore_data, bool _restore_meta, bool _restore_epoch,
+                  bool _disable_indexes, bool _enable_indexes,
                   int _node_id, unsigned _backup_id, unsigned error_insert = 0,
                   const char *encryption_password = nullptr,
                   int password_length = -1);

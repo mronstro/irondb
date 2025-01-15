@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -676,6 +676,7 @@ Dblqh::Dblqh(Block_context &ctx, Uint32 instanceNumber, Uint32 blockNo)
     addRecSignal(GSN_NEXT_SCANCONF, &Dblqh::execNEXT_SCANCONF);
     addRecSignal(GSN_NEXT_SCANREF, &Dblqh::execNEXT_SCANREF);
     addRecSignal(GSN_ACC_CHECK_SCAN, &Dblqh::execACC_CHECK_SCAN);
+    addRecSignal(GSN_COPY_FRAG_DONE_REP, &Dblqh::execCOPY_FRAG_DONE_REP);
     addRecSignal(GSN_COPY_FRAGREQ, &Dblqh::execCOPY_FRAGREQ);
     addRecSignal(GSN_COPY_FRAGREF, &Dblqh::execCOPY_FRAGREF);
     addRecSignal(GSN_COPY_FRAGCONF, &Dblqh::execCOPY_FRAGCONF);

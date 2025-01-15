@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -559,8 +559,10 @@ const Uint32 LCP_ScanNo = 254;
 const Uint32 Backup_ScanNo = 255;
 
 #ifndef NDBD_TRACENR
+#ifndef ERROR_INSERT
 #if defined VM_TRACE
 #define NDBD_TRACENR
+#endif
 #endif
 #endif
 
@@ -10226,6 +10228,7 @@ void Dblqh::handle_nr_copy(Signal *signal, Ptr<TcConnectionrec> regTcPtr) {
     if (TRACENR_FLAG) TRACENR(" Waiting for COPY_ACTIVEREQ" << endl);
     ndbassert(!LqhKeyReq::getNrCopyFlag(regTcPtr.p->reqinfo));
     regTcPtr.p->activeCreat = Fragrecord::AC_NORMAL;
+    fragptr.p->m_copy_started_state = Fragrecord::AC_NORMAL;
     exec_acckeyreq(signal, regTcPtr);
     return;
   }
@@ -13146,7 +13149,7 @@ void Dblqh::execCOMMIT(Signal *signal) {
     if (tcConnectptr.p->tableref > 2) {
       jam();
       g_eventLogger->info("LQH %u delaying commit", instance());
-      sendSignalWithDelay(cownref, GSN_COMMIT, signal, 200,
+      sendSignalWithDelay(cownref, GSN_COMMIT, signal, 1000,
                           signal->getLength());
       return;
     }
@@ -13349,7 +13352,7 @@ void Dblqh::execCOMPLETE(Signal *signal) {
     if (tcConnectptr.p->tableref > 2) {
       jam();
       g_eventLogger->info("LQH %u delaying complete", instance());
-      sendSignalWithDelay(cownref, GSN_COMPLETE, signal, 200,
+      sendSignalWithDelay(cownref, GSN_COMPLETE, signal, 1000,
                           signal->getLength());
       return;
     }
@@ -20674,7 +20677,7 @@ void Dblqh::execCOPY_FRAGREQ(Signal *signal) {
   Uint32 nodeCount = copyFragReq->nodeCount;
   ndbrequire(signal->getLength() >= CopyFragReq::SignalLength + nodeCount)
 
-      NdbNodeBitmask nodemask;
+  NdbNodeBitmask nodemask;
   {
     ndbrequire(nodeCount <= MAX_REPLICAS);
     for (Uint32 i = 0; i < nodeCount; i++)
@@ -21595,6 +21598,47 @@ void Dblqh::closeCopyLab(Signal *signal, TcConnectionrec *regTcPtr) {
   {
     g_eventLogger->info("Copy of tab(%u,%u) complete", fragptr.p->tabRef,
                         fragptr.p->fragId);
+  }
+
+  bool support_copy_frag_done_rep = ndbd_support_copy_frag_done(
+      getNodeInfo(regTcPtr->nextReplica).m_version);
+  if (support_copy_frag_done_rep) {
+    /**
+     * The variable m_copy_started_state has 3 states in the starting node:
+     * AC_IGNORED: Set before copy from live node starts. In this state all
+     *   writes are ignored but the node participates in the transactions.
+     * AC_NR_COPY: Set when first copy row arrives. In this state all
+     *   LQHKEYREQ are sent using RowId.
+     * AC_NORMAL: Normal operation, set when COPY_ACTIVEREQ is received from
+     *   master node.
+     *
+     * Inserts are sent with RowId even in normal operation, so if they arrive
+     * after copying completed, but before COPY_ACTIVEREQ arrives we cannot tell
+     * if it is in Copy phase or normal phase. This can lead to a crash in the
+     * case of a DELETE followed by an INSERT. It can lead to lost row in
+     * starting node if the INSERTs RowId is a new RowId outside of the range
+     * currently copied.
+     *
+     * We send a new signal to inform about the finished copying directly from
+     * live node to starting node. Thus disallow races to occur. Otherwise a
+     * classic race where the signal COPY_FRAGCONF goes from copying -> master,
+     * master sends to starting. This can raced by normal LQHKEYREQ from
+     * live to starting node in highly loaded clusters.
+     * Thus opening a small window of bad things to occur. This signal closes
+     * down that window.
+     */
+    jam();
+    Uint32 instanceNo =
+      getInstanceNo(regTcPtr->nextReplica, fragptr.p->lqhInstanceKey);
+    BlockReference lqhRef = numberToRef(DBLQH,
+                                        instanceNo,
+                                        regTcPtr->nextReplica);
+
+    CopyFragDoneRep *rep = (CopyFragDoneRep *)signal->getDataPtrSend();
+    rep->tableId = fragptr.p->tabRef;
+    rep->fragId = fragptr.p->fragId;
+    sendSignal(lqhRef, GSN_COPY_FRAG_DONE_REP, signal,
+               CopyFragDoneRep::SignalLength, JBB);
   }
 
   Fragrecord::FragStatus fragstatus = fragptr.p->fragStatus;
@@ -28182,6 +28226,25 @@ void Dblqh::execCOPY_FRAGREF(Signal *signal) {
   sysErr->data[1] = 0;
   sendSignal(NDBCNTR_REF, GSN_SYSTEM_ERROR, signal, SystemError::SignalLength,
              JBA);
+}
+
+void Dblqh::execCOPY_FRAG_DONE_REP(Signal *signal) {
+  jamEntry();
+  const CopyFragDoneRep *rep =
+    CAST_CONSTPTR(CopyFragDoneRep, signal->getDataPtr());
+  TablerecPtr tabPtr;
+  ndbrequire(getTableFragmentrec(rep->tableId,
+                                 rep->fragId,
+                                 tabPtr,
+                                 fragptr));
+  /**
+   * We can come here in all 3 states:
+   * AC_IGNORED: Empty fragment
+   * AC_NR_COPY: The signal came before COPY_FRAGCONF -> COPY_ACTIVEREQ
+   * AC_NORMAL: The signal came after COPY_FRAGCONF -> COPY_ACTIVEREQ
+   */
+  g_eventLogger->info("m_copy_started_state before: %u", fragptr.p->m_copy_started_state);
+  fragptr.p->m_copy_started_state = Fragrecord::AC_NORMAL;
 }
 
 void Dblqh::execCOPY_FRAGCONF(Signal *signal) {

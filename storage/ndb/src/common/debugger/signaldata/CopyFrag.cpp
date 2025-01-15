@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2023, 2023, Hopsworks and/or its affiliates.
+   Copyright (c) 2023, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -71,5 +71,129 @@ printCOPY_FRAGREF(FILE * output, const Uint32 * theData, Uint32, Uint16)
   fprintf(output, " tableId: %u fragId: %u\n", sig->tableId, sig->fragId);
   fprintf(output, "errorCode: %u\n",
 	  sig->errorCode);
+  return true;
+}
+
+bool
+printCOPY_FRAG_DONE_REP(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const CopyFragDoneRep* sig = (const CopyFragDoneRep*)theData;
+  
+  fprintf(output, " tableId: %u fragId: %u\n", sig->tableId, sig->fragId);
+  return true;
+}
+
+bool
+printUPDATE_FRAG_DIST_KEY_ORD(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const UpdateFragDistKeyOrd* sig = (const UpdateFragDistKeyOrd*)theData;
+  
+  fprintf(output, " tableId: %u fragId: %u\n", sig->tableId, sig->fragId);
+  fprintf(output, " fragDistributionKey: %u\n", sig->fragDistributionKey);
+  return true;
+}
+
+bool
+printPREPARE_COPY_FRAG_REQ(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const PrepareCopyFragReq* sig = (const PrepareCopyFragReq*)theData;
+  fprintf(output, "senderData: %u senderRef: %x",
+	  sig->senderData, sig->senderRef);
+  fprintf(output, " tableId: %u fragId: %u\n", sig->tableId, sig->fragId);
+  fprintf(output, " copyNodeId: %u, startingNodeId: %u\n",
+	  sig->copyNodeId, sig->startingNodeId);
+  return true;
+}
+
+bool
+printPREPARE_COPY_FRAG_CONF(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const PrepareCopyFragConf* sig = (const PrepareCopyFragConf*)theData;
+  fprintf(output, "senderData: %u senderRef: %x",
+	  sig->senderData, sig->senderRef);
+  fprintf(output, " tableId: %u fragId: %u\n", sig->tableId, sig->fragId);
+  fprintf(output, " copyNodeId: %u, startingNodeId: %u\n",
+	  sig->copyNodeId, sig->startingNodeId);
+  fprintf(output, " maxPageNo: %u, completedGci: %u\n",
+	  sig->maxPageNo, sig->completedGci);
+  return true;
+}
+
+bool
+printPREPARE_COPY_FRAG_REF(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const PrepareCopyFragRef* sig = (const PrepareCopyFragRef*)theData;
+  fprintf(output, "senderData: %u senderRef: %x",
+	  sig->senderData, sig->senderRef);
+  fprintf(output, " tableId: %u fragId: %u\n", sig->tableId, sig->fragId);
+  fprintf(output, " copyNodeId: %u, startingNodeId: %u\n",
+	  sig->copyNodeId, sig->startingNodeId);
+  fprintf(output, " errorCode: %u\n", sig->errorCode);
+  return true;
+}
+
+bool
+printHALT_COPY_FRAG_REQ(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const HaltCopyFragReq* sig = (const HaltCopyFragReq*)theData;
+  fprintf(output, "senderData: %u senderRef: %x\n",
+	  sig->senderData, sig->senderRef);
+  fprintf(output, " tableId: %u fragmentId: %u\n",
+          sig->tableId, sig->fragmentId);
+  return true;
+}
+
+bool
+printHALT_COPY_FRAG_CONF(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const HaltCopyFragConf* sig = (const HaltCopyFragConf*)theData;
+  fprintf(output, "senderData: %u\n", sig->senderData);
+  fprintf(output, " tableId: %u fragmentId: %u\n",
+          sig->tableId, sig->fragmentId);
+  fprintf(output, " cause: %u\n", sig->cause);
+  return true;
+}
+
+bool
+printHALT_COPY_FRAG_REF(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const HaltCopyFragRef* sig = (const HaltCopyFragRef*)theData;
+  fprintf(output, "senderData: %u\n", sig->senderData);
+  fprintf(output, " tableId: %u fragmentId: %u\n",
+          sig->tableId, sig->fragmentId);
+  fprintf(output, " errorCode: %u\n", sig->errorCode);
+  return true;
+}
+
+bool
+printRESUME_COPY_FRAG_REQ(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const ResumeCopyFragReq* sig = (const ResumeCopyFragReq*)theData;
+  fprintf(output, "senderData: %u senderRef: %x\n",
+	  sig->senderData, sig->senderRef);
+  fprintf(output, " tableId: %u fragmentId: %u\n",
+          sig->tableId, sig->fragmentId);
+  return true;
+}
+
+bool
+printRESUME_COPY_FRAG_CONF(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const ResumeCopyFragConf* sig = (const ResumeCopyFragConf*)theData;
+  fprintf(output, "senderData: %u\n", sig->senderData);
+  fprintf(output, " tableId: %u fragmentId: %u\n",
+          sig->tableId, sig->fragmentId);
+  return true;
+}
+
+bool
+printRESUME_COPY_FRAG_REF(FILE * output, const Uint32 * theData, Uint32, Uint16)
+{
+  const ResumeCopyFragRef* sig = (const ResumeCopyFragRef*)theData;
+  fprintf(output, "senderData: %u\n",
+	  sig->senderData);
+  fprintf(output, " tableId: %u fragmentId: %u\n",
+          sig->tableId, sig->fragmentId);
+  fprintf(output, " errorCode: %u\n", sig->errorCode);
   return true;
 }

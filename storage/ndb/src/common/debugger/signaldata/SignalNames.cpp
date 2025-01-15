@@ -973,5 +973,6 @@ const GsnName SignalNames [] = {
   ,{ GSN_SET_DOMAIN_ID_REQ, "SET_DOMAIN_ID_REQ" }
   ,{ GSN_SET_DOMAIN_ID_CONF, "SET_DOMAIN_ID_CONF" }
   ,{ GSN_SET_DOMAIN_ID_REF, "SET_DOMAIN_ID_REF" }
+  ,{ GSN_COPY_FRAG_DONE_REP, "COPY_FRAG_DONE_REP" }
 };
 const unsigned short NO_OF_SIGNAL_NAMES = sizeof(SignalNames)/sizeof(GsnName);

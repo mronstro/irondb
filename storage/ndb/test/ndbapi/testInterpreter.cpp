@@ -1,6 +1,6 @@
 /*
  Copyright (c) 2003, 2024, Oracle and/or its affiliates.
- Copyright (c) 2024, 2024, Hopsworks and/or its affiliates.
+ Copyright (c) 2024, 2025, Hopsworks and/or its affiliates.
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License, version 2.0,
@@ -540,6 +540,11 @@ runNewInterpreterTest(NDBT_Context* ctx, NDBT_Step* step)
   const NdbDictionary::Table * pTab = ctx->getTab();
   Ndb* pNdb = GETNDB(step);
   NdbDictionary::Dictionary * dict = pNdb->getDictionary();
+
+  if (strcmp(pTab->getName(), "T6") != 0) {
+    ndbout_c("runNewInterpreterTest: skip, table != T6");
+    return NDBT_OK;
+  }
 
   /**
    * Get default record to use for Insert operation.

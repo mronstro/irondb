@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -112,7 +112,7 @@ static const Uint32 WaitTableStateChangeMillis = 1;
 //#define DEBUG_PAUSE 1
 //#define DEBUG_REMOVE_NODE 1
 //#define DEBUG_LCP_QUEUED 1
-//#define DEBUG_MULTI_TRP 1
+#define DEBUG_MULTI_TRP 1
 //#define DEBUG_NODE_STOP 1
 //#define DEBUG_REDO_CONTROL 1
 //#define DEBUG_LCP 1
@@ -7377,9 +7377,12 @@ void Dbdih::nr_start_fragment(Signal *signal, TakeOverRecordPtr takeOverPtr,
   Uint32 restorableGCI = takeOverPtr.p->restorableGci;
 
 #if defined VM_TRACE || defined ERROR_INSERT
-  g_eventLogger->info("tab: %d frag: %d replicaP->nextLcp: %d",
+  g_eventLogger->info("tab: %d frag: %d replicaP->nextLcp: %d,"
+                      " restorableGci: %u",
                       takeOverPtr.p->toCurrentTabref,
-                      takeOverPtr.p->toCurrentFragid, replicaPtr.p->nextLcp);
+                      takeOverPtr.p->toCurrentFragid,
+                      replicaPtr.p->nextLcp,
+                      restorableGCI);
 #endif
 
   /**
@@ -7428,9 +7431,14 @@ void Dbdih::nr_start_fragment(Signal *signal, TakeOverRecordPtr takeOverPtr,
       for (; j >= 0; j--) {
 #if defined VM_TRACE || defined ERROR_INSERT
         g_eventLogger->info(
-            "crashed replica: %d(%d) replica(createGci: %u lastGci: %d )", j,
-            replicaPtr.p->noCrashedReplicas, replicaPtr.p->createGci[j],
-            replicaPtr.p->replicaLastGci[j]);
+            "crashed replica: %d(%d) replica(createGci: %u lastGci: %d ), "
+            "SYSFILE->lastCompletedGCI[%u] = %u",
+            j,
+            replicaPtr.p->noCrashedReplicas,
+            replicaPtr.p->createGci[j],
+            replicaPtr.p->replicaLastGci[j],
+            replicaPtr.p->procNode,
+            SYSFILE->lastCompletedGCI[replicaPtr.p->procNode]);
 #endif
         if (replicaPtr.p->createGci[j] <= startGci &&
             replicaPtr.p->replicaLastGci[j] >= stopGci &&
@@ -7438,6 +7446,7 @@ void Dbdih::nr_start_fragment(Signal *signal, TakeOverRecordPtr takeOverPtr,
                 SYSFILE->lastCompletedGCI[replicaPtr.p->procNode] &&
             replicaPtr.p->maxGciStarted[idx] <=
                 SYSFILE->lastCompletedGCI[replicaPtr.p->procNode]) {
+          jam();
           maxLcpId = replicaPtr.p->lcpId[idx];
           maxLcpIndex = idx;
           gci = replicaPtr.p->replicaLastGci[j];
@@ -7459,9 +7468,14 @@ void Dbdih::nr_start_fragment(Signal *signal, TakeOverRecordPtr takeOverPtr,
     for (; j >= 0; j--) {
 #if defined VM_TRACE || defined ERROR_INSERT
       g_eventLogger->info(
-          "crashed replica: %d(%d) replica(createGci: %u lastGci: %d )", j,
-          replicaPtr.p->noCrashedReplicas, replicaPtr.p->createGci[j],
-          replicaPtr.p->replicaLastGci[j]);
+          "crashed replica: %d(%d) replica(createGci: %u lastGci: %d ), "
+          "SYSFILE->lastCompletedGCI[%u] = %u",
+          j,
+          replicaPtr.p->noCrashedReplicas,
+          replicaPtr.p->createGci[j],
+          replicaPtr.p->replicaLastGci[j],
+          replicaPtr.p->procNode,
+          SYSFILE->lastCompletedGCI[replicaPtr.p->procNode]);
 #endif
       if (replicaPtr.p->createGci[j] <= startGci &&
           replicaPtr.p->replicaLastGci[j] >= stopGci &&
@@ -7469,6 +7483,7 @@ void Dbdih::nr_start_fragment(Signal *signal, TakeOverRecordPtr takeOverPtr,
               SYSFILE->lastCompletedGCI[replicaPtr.p->procNode] &&
           replicaPtr.p->maxGciStarted[idx] <=
               SYSFILE->lastCompletedGCI[replicaPtr.p->procNode]) {
+        jam();
         maxLcpId = replicaPtr.p->lcpId[idx];
         maxLcpIndex = idx;
         gci = replicaPtr.p->replicaLastGci[j];
@@ -7487,6 +7502,15 @@ done:
      * we didn't find a local LCP that we can restore
      */
     jam();
+    if (gci == 0) {
+      Ptr<TabRecord> tabPtr;
+      tabPtr.i = takeOverPtr.p->toCurrentTabref;
+      ptrAss(tabPtr, tabRecord);
+
+      FragmentstorePtr fragPtr;
+      getFragstore(tabPtr.p, takeOverPtr.p->toCurrentFragid, fragPtr);
+      dump_replica_info(fragPtr.p);
+    }
     ndbassert(gci == 0);
     replicaPtr.p->m_restorable_gci = gci;
 
@@ -7552,6 +7576,8 @@ done:
   } else {
     jam();
     if (gci != restorableGCI) {
+      g_eventLogger->info("gci: %u, maxLcpIndex = %u, maxLcpId = %u",
+        gci, maxLcpIndex, maxLcpId);
       Ptr<TabRecord> tabPtr;
       tabPtr.i = takeOverPtr.p->toCurrentTabref;
       ptrAss(tabPtr, tabRecord);

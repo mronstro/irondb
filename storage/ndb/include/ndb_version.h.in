@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2004, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -1044,6 +1044,22 @@ ndbd_support_set_location_domain_id(Uint32 x)
 static inline
 bool
 ndbd_support_parallel_copy_tabreq(Uint32 x) {
+  const Uint32 major = (x >> 16) & 0xFF;
+  const Uint32 minor = (x >>  8) & 0xFF;
+  if (major > 24)
+  {
+    return true;
+  }
+  if ((major == 24) && (minor == 10))
+  {
+    return true;
+  }
+  return false;
+}
+
+static inline
+bool
+ndbd_support_copy_frag_done(Uint32 x) {
   const Uint32 major = (x >> 16) & 0xFF;
   const Uint32 minor = (x >>  8) & 0xFF;
   if (major > 24)

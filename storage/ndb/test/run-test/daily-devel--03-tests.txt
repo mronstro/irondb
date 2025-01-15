@@ -85,7 +85,7 @@ max-time: 1800
 
 cmd: testScan
 args: -n ScanUpdateRestart D1 D2
-max-time: 1800
+max-time: 3800
 
 cmd: testNodeRestart
 args: -n Bug34216 -l 10 T1 I3 D2

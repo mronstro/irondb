@@ -1,5 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+   Copyright (c) 2025, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -34,11 +35,15 @@ class UtilTransactions {
  public:
   Uint64 m_util_latest_gci{0};
   Uint32 get_high_latest_gci() {
+#ifndef ERROR_INSERT
     assert(m_util_latest_gci != 0);
+#endif
     return Uint32(Uint64(m_util_latest_gci >> 32));
   }
   Uint32 get_low_latest_gci() {
+#ifndef ERROR_INSERT
     assert(m_util_latest_gci != 0);
+#endif
     return Uint32(Uint64(m_util_latest_gci & 0xFFFFFFFF));
   }
   UtilTransactions(const NdbDictionary::Table &,

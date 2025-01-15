@@ -1,5 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+   Copyright (c) 2025, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -256,7 +257,8 @@ BaseString NdbBackup::getNdbRestoreBinaryPath() {
 }
 
 int NdbBackup::execRestore(bool _restore_data, bool _restore_meta,
-                           bool _restore_epoch, int _node_id,
+                           bool _restore_epoch, bool _disable_indexes,
+                           bool _enable_indexes, int _node_id,
                            unsigned _backup_id, unsigned _error_insert,
                            const char *encryption_password,
                            int password_length) {
@@ -340,8 +342,15 @@ int NdbBackup::execRestore(bool _restore_data, bool _restore_meta,
   }
 
   if (res == 0 && _restore_meta) {
-    /** don't restore DD objects */
+    /** don't restore DD objects (-d) */
     tmp.assfmt("%s -m -d .", cmd.c_str());
+
+    ndbout << "buf: " << tmp.c_str() << endl;
+    res = system(tmp.c_str());
+  }
+
+  if (res == 0 && _disable_indexes) {
+    tmp.assfmt("%s -D .", cmd.c_str());
 
     ndbout << "buf: " << tmp.c_str() << endl;
     res = system(tmp.c_str());
@@ -349,6 +358,13 @@ int NdbBackup::execRestore(bool _restore_data, bool _restore_meta,
 
   if (res == 0 && _restore_data) {
     tmp.assfmt("%s -r .", cmd.c_str());
+
+    ndbout << "buf: " << tmp.c_str() << endl;
+    res = system(tmp.c_str());
+  }
+
+  if (res == 0 && _enable_indexes) {
+    tmp.assfmt("%s -R .", cmd.c_str());
 
     ndbout << "buf: " << tmp.c_str() << endl;
     res = system(tmp.c_str());
@@ -374,29 +390,39 @@ int NdbBackup::restore(unsigned _backup_id, bool restore_meta,
   if (getStatus() != 0) return -1;
 
   if (!restore_meta && !restore_data && !restore_epoch &&
-      (execRestore(false, false, false, ndbNodes[0].node_id, _backup_id,
-                   error_insert) != 0))
+      (execRestore(false, false, false, false, false, ndbNodes[0].node_id,
+                   _backup_id, error_insert) != 0))
     return -1;
 
   if (restore_meta &&  // if metadata restore enabled
                        // restore metadata for first node
-      (execRestore(false, true, false, ndbNodes[0].node_id, _backup_id,
-                   error_insert) != 0))
+      (execRestore(false, true, false, false, false, ndbNodes[0].node_id,
+                   _backup_id, error_insert) != 0))
+    return -1;
+
+  if (restore_meta &&  // Disable indexes
+      (execRestore(false, false, false, true, false, ndbNodes[0].node_id,
+                   _backup_id, error_insert) != 0))
     return -1;
 
   // Restore data once for each node
   if (restore_data) {
     for (unsigned i = 0; i < ndbNodes.size(); i++) {
-      if (execRestore(true, false, false, ndbNodes[i].node_id, _backup_id,
-                      error_insert) != 0)
+      if (execRestore(true, false, false, false, false, ndbNodes[i].node_id,
+                      _backup_id, error_insert) != 0)
         return -1;
     }
   }
 
+  if (restore_meta &&  // Enable indexes
+      (execRestore(false, false, false, false, true, ndbNodes[0].node_id,
+                   _backup_id, error_insert) != 0))
+    return -1;
+
   // Restore epoch from first node
   if (restore_epoch) {
-    if (execRestore(false, false, true, ndbNodes[0].node_id, _backup_id,
-                    error_insert) != 0) {
+    if (execRestore(false, false, true, false, false, ndbNodes[0].node_id,
+                    _backup_id, error_insert) != 0) {
       return -1;
     }
   }

@@ -126,12 +126,20 @@ public:
   Uint32 errorCode;
 };
 
+struct CopyFragDoneRep {
+  Uint32 tableId;
+  Uint32 fragId;
+  static constexpr Uint32 SignalLength = 2;
+  friend bool printCOPY_FRAG_DONE_REP(FILE *, const Uint32 *, Uint32, Uint16);
+};
+
 struct UpdateFragDistKeyOrd {
   Uint32 tableId;
   Uint32 fragId;
   Uint32 fragDistributionKey;
 
   static constexpr Uint32 SignalLength = 3;
+  friend bool printUPDATE_FRAG_DIST_KEY_ORD(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 struct PrepareCopyFragReq {
@@ -143,6 +151,7 @@ struct PrepareCopyFragReq {
   Uint32 fragId;
   Uint32 copyNodeId;
   Uint32 startingNodeId;
+  friend bool printPREPARE_COPY_FRAG_REQ(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 struct PrepareCopyFragRef {
@@ -155,6 +164,7 @@ struct PrepareCopyFragRef {
   Uint32 errorCode;
 
   static constexpr Uint32 SignalLength = 7;
+  friend bool printPREPARE_COPY_FRAG_REF(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 struct PrepareCopyFragConf {
@@ -169,6 +179,7 @@ struct PrepareCopyFragConf {
   Uint32 startingNodeId;
   Uint32 maxPageNo;
   Uint32 completedGci;
+  friend bool printPREPARE_COPY_FRAG_CONF(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 class HaltCopyFragReq {
@@ -179,6 +190,7 @@ class HaltCopyFragReq {
   Uint32 senderData;
   Uint32 tableId;
   Uint32 fragmentId;
+  friend bool printHALT_COPY_FRAG_REQ(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 class HaltCopyFragConf {
@@ -190,6 +202,7 @@ class HaltCopyFragConf {
   Uint32 tableId;
   Uint32 fragmentId;
   Uint32 cause;
+  friend bool printHALT_COPY_FRAG_CONF(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 class HaltCopyFragRef {
@@ -200,6 +213,7 @@ class HaltCopyFragRef {
   Uint32 tableId;
   Uint32 fragmentId;
   Uint32 errorCode;
+  friend bool printHALT_COPY_FRAG_REF(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 class ResumeCopyFragReq {
@@ -210,6 +224,7 @@ class ResumeCopyFragReq {
   Uint32 senderData;
   Uint32 tableId;
   Uint32 fragmentId;
+  friend bool printRESUME_COPY_FRAG_REQ(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 class ResumeCopyFragConf {
@@ -219,6 +234,7 @@ class ResumeCopyFragConf {
   Uint32 senderData;
   Uint32 tableId;
   Uint32 fragmentId;
+  friend bool printRESUME_COPY_FRAG_CONF(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 class ResumeCopyFragRef {
@@ -229,6 +245,7 @@ class ResumeCopyFragRef {
   Uint32 tableId;
   Uint32 fragmentId;
   Uint32 errorCode;
+  friend bool printRESUME_COPY_FRAG_REF(FILE *, const Uint32 *, Uint32, Uint16);
 };
 
 #undef JAM_FILE_ID

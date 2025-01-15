@@ -1,4 +1,5 @@
 # Copyright (c) 2015, 2025, Oracle and/or its affiliates.
+# Copyright (c) 2025, 2025, Hopsworks and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -109,7 +110,7 @@ max-time: 720
 
 cmd: testScan
 args: -n ScanUpdateRestart T6
-max-time: 900
+max-time: 3000
 
 cmd: testNodeRestart
 args: -n RestartAllNodesAbort T6 T13

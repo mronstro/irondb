@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2023, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -9321,8 +9321,12 @@ void asyncCallbackFn(int res, NdbTransaction *pCon, void *data) {
 
   if (res) {
     cbd->result = pCon->getNdbError().code;
+    ndbout_c("%p:asyncCallbackFn, res != 0, error: %d",
+      pCon, cbd->result);
   } else {
     cbd->result = 0;
+    ndbout_c("%p:asyncCallbackFn, res == 0, error: %d",
+      pCon, pCon->getNdbError().code);
   }
 
   /* todo : sync */
@@ -9396,13 +9400,15 @@ int runTestStallTimeout(NDBT_Context *ctx, NDBT_Step *step) {
 
     CHECK(trans->getNdbError().code == 0, "Async send failed");
 
-    const int waitTime = 5;
-    ndbout_c("  - Waiting for up to %u seconds for result", waitTime);
+    const int waitTime = 8;
+    ndbout_c("  - Waiting for up to %u seconds for result, trans: %p",
+      waitTime, trans);
 
     for (int i = 0; i < waitTime; i++) {
       pNdb->pollNdb(1000);
 
       if (cbd.ready) {
+        ndbout_c("Response after %u seconds", i);
         break;
       }
     }
@@ -9447,7 +9453,8 @@ int runTestStallTimeout(NDBT_Context *ctx, NDBT_Step *step) {
 
       CHECK(trans2->getNdbError().code == 0, "Async send2 failed");
 
-      ndbout_c("    - Waiting for up to %u seconds for result", waitTime);
+      ndbout_c("    - Waiting for up to %u seconds for result, trans2: %p",
+        waitTime, trans2);
 
       /* For commit + complete blocking, update will fail
        * after TDDT.

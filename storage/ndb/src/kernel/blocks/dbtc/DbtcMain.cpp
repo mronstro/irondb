@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -7873,6 +7873,7 @@ void Dbtc::copyApi(Signal *signal,
 
   copyPtr.p->ndbapiBlockref = regApiPtr.p->ndbapiBlockref;
   copyPtr.p->globalcheckpointid = regApiPtr.p->globalcheckpointid;
+  copyPtr.p->failureNr = regApiPtr.p->failureNr;
   copyPtr.p->ndbapiConnect = TndbapiConnect;
   copyPtr.p->tcConnect = regApiPtr.p->tcConnect;
   copyPtr.p->nextTcOperation = RNIL;
@@ -11005,18 +11006,34 @@ void Dbtc::timeOutFoundLab(Signal *signal, Uint32 TapiConPtr, Uint32 errCode) {
       /* or more LQH instances.  We cannot speed this up.                 */
       /* Only in confirmed node failure situations do we take action.     */
       /*------------------------------------------------------------------*/
-      logTransactionTimeout(signal, TapiConPtr, errCode);
-      if (apiConnectptr.p->setup_fail_data) {
+      if (errCode == ZNODEFAIL_BEFORE_COMMIT ||
+          apiConnectptr.p->failureNr != cfailure_nr) {
         jam();
         /**
-         * Set up of setupFailData is already in process, cannot start
-         * another one when already in process.
+         * Node failure handling, switch to serial commit handling
+         * which can accomodate lost signals
          */
-        return;
+        if (apiConnectptr.p->setup_fail_data) {
+          jam();
+          /**
+           * Set up of setupFailData is already in process, cannot start
+           * another one when already in process.
+           */
+          return;
+        }
+        init_setupFailData(signal,
+                           apiConnectptr,
+                           ZCOMMIT_SETUP);
+      } else {
+        jam();
+        /**
+         * Slow commit - could be communication failure or overload
+         * Log details if user configured verbosity.
+         * Always log summary.
+         */
+        logTransactionTimeout(signal, TapiConPtr, errCode);
+        periodicLogOddTimeoutAndResetTimer(apiConnectptr);
       }
-      init_setupFailData(signal,
-                         apiConnectptr,
-                         ZCOMMIT_SETUP);
       break;
     }
     case CS_COMPLETING:
@@ -11028,16 +11045,31 @@ void Dbtc::timeOutFoundLab(Signal *signal, Uint32 TapiConPtr, Uint32 errCode) {
       /* or more LQH instances.  We cannot speed this up.                   */
       /* Only in confirmed node failure situations do we take action.       */
       /*--------------------------------------------------------------------*/
-      logTransactionTimeout(signal, TapiConPtr, errCode);
-      if (apiConnectptr.p->setup_fail_data)
-      {
+      if (errCode == ZNODEFAIL_BEFORE_COMMIT ||
+          apiConnectptr.p->failureNr != cfailure_nr) {
         jam();
-        /* Already ongoing */
-        return;
+        /**
+         * Node failure handling, switch to serial complete handling
+         * which can handle lost signals.
+         */
+        if (apiConnectptr.p->setup_fail_data) {
+          jam();
+          /* Already ongoing */
+          return;
+        }
+        init_setupFailData(signal,
+                           apiConnectptr,
+                           ZCOMPLETE_SETUP);
+      } else {
+        jam();
+        /**
+         * Slow complete - could be communication failure or overload,
+         * Log details if user configured verbosity.
+         * Always log summary
+         */
+        logTransactionTimeout(signal, TapiConPtr, errCode);
+        periodicLogOddTimeoutAndResetTimer(apiConnectptr);
       }
-      init_setupFailData(signal,
-                         apiConnectptr,
-                         ZCOMPLETE_SETUP);
       break;
     }
     case CS_ABORTING:

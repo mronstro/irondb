@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2023, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -74,6 +74,8 @@
 #define FREE_NODE_GROUP 65535
 
 #define TEST_FRM_DATA_SIZE 14000
+
+#define SAFETY 300
 
 static int numNodeGroups;
 static int numNoNodeGroups;
@@ -2582,12 +2584,13 @@ int runTableAddAttrsDuring(NDBT_Context *ctx, NDBT_Step *step) {
         CHECK2(dict->alterTable(*oldTable, newTable) == 0,
                "TableAddAttrsDuring failed");
       } else {
-        int nodeId = res.getNode(NdbRestarter::NS_RANDOM);
+        nodeId = res.getNode(NdbRestarter::NS_RANDOM);
         if (l % 2 == 0)
           res.insertErrorInNode(nodeId, 4029);
         else
           res.insertErrorInNode(nodeId, 4039);
-        ndbout << "Start alterTable with abortAlter" << endl;
+        ndbout << "Start alterTable with abortAlter, inject error on node: "
+               << nodeId << endl;
         CHECK2(dict->alterTable(*oldTable, newTable) != 0,
                "TableAddAttrsDuring failed");
       }
@@ -2604,8 +2607,10 @@ int runTableAddAttrsDuring(NDBT_Context *ctx, NDBT_Step *step) {
       break;
     }
     if (nodeId) {
+      ndbout << "Clear ErrorInsert on node " << nodeId << endl;
       CHECK2(res.insertErrorInNode(nodeId, 0) == 0,
              "failed to clear error insert");
+      NdbSleep_MilliSleep(SAFETY);
     }
   }
 end:
@@ -2860,8 +2865,6 @@ int getColumnMaxLength(const NdbDictionary::Column *c) {
 
 #include <NDBT_Tables.hpp>
 
-#define SAFTY 300
-
 int runFailAddFragment(NDBT_Context* ctx, NDBT_Step* step){
   static int acclst[] = { 3001, 6200, 6202 };
   static int tuplst[] = { 4007, 4008, 4009, 4010, 4032, 4033, 4034 };
@@ -2955,13 +2958,13 @@ int runFailAddFragment(NDBT_Context* ctx, NDBT_Step* step){
       CHECK(restarter.dumpStateAllNodes(&dump1, 1) == 0);
       CHECK2(restarter.insertErrorInNode(nodeId, errval) == 0,
              "failed to set error insert");
-      NdbSleep_MilliSleep(SAFTY);  // Hope that snapshot has arrived
+      NdbSleep_MilliSleep(SAFETY);  // Hope that snapshot has arrived
       CHECK2(pDic->createTable(tab) != 0,
              "failed to fail after error insert " << errval);
       CHECK2(restarter.insertErrorInNode(nodeId, 0) == 0,
              "failed to clean error insert value");
       CHECK(restarter.dumpStateAllNodes(&dump2, 1) == 0);
-      NdbSleep_MilliSleep(SAFTY);  // Hope that snapshot has arrived
+      NdbSleep_MilliSleep(SAFETY);  // Hope that snapshot has arrived
       CHECK2(pDic->createTable(tab) == 0, pDic->getNdbError());
       CHECK2(pDic->dropTable(tab.getName()) == 0, pDic->getNdbError());
     }
@@ -2973,13 +2976,13 @@ int runFailAddFragment(NDBT_Context* ctx, NDBT_Step* step){
       CHECK(restarter.dumpStateAllNodes(&dump1, 1) == 0);
       CHECK2(restarter.insertErrorInNode(nodeId, errval) == 0,
              "failed to set error insert");
-      NdbSleep_MilliSleep(SAFTY);  // Hope that snapshot has arrived
+      NdbSleep_MilliSleep(SAFETY);  // Hope that snapshot has arrived
       CHECK2(pDic->createTable(tab) != 0,
              "failed to fail after error insert " << errval);
       CHECK2(restarter.insertErrorInNode(nodeId, 0) == 0,
              "failed to clean error insert value");
       CHECK(restarter.dumpStateAllNodes(&dump2, 1) == 0);
-      NdbSleep_MilliSleep(SAFTY);  // Hope that snapshot has arrived
+      NdbSleep_MilliSleep(SAFETY);  // Hope that snapshot has arrived
       CHECK2(pDic->createTable(tab) == 0, pDic->getNdbError());
       CHECK2(pDic->dropTable(tab.getName()) == 0, pDic->getNdbError());
     }
@@ -2993,14 +2996,14 @@ int runFailAddFragment(NDBT_Context* ctx, NDBT_Step* step){
       CHECK(restarter.dumpStateAllNodes(&dump1, 1) == 0);
       CHECK2(restarter.insertErrorInNode(nodeId, errval) == 0,
              "failed to set error insert");
-      NdbSleep_MilliSleep(SAFTY);  // Hope that snapshot has arrived
+      NdbSleep_MilliSleep(SAFETY);  // Hope that snapshot has arrived
 
       CHECK2(pDic->createIndex(idx) != 0,
              "failed to fail after error insert " << errval);
       CHECK2(restarter.insertErrorInNode(nodeId, 0) == 0,
              "failed to clean error insert value");
       CHECK(restarter.dumpStateAllNodes(&dump2, 1) == 0);
-      NdbSleep_MilliSleep(SAFTY);  // Hope that snapshot has arrived
+      NdbSleep_MilliSleep(SAFETY);  // Hope that snapshot has arrived
       CHECK2(pDic->createIndex(idx) == 0, pDic->getNdbError());
       CHECK2(pDic->dropTable(tab.getName()) == 0, pDic->getNdbError());
     }
@@ -7657,7 +7660,7 @@ int runFailAddPartition(NDBT_Context *ctx, NDBT_Step *step) {
       CHECK2(restarter.insertErrorInNode(nodeId, errval) == 0,
              "failed to set error insert");
 
-      NdbSleep_MilliSleep(SAFTY);  // Hope that snapshot has arrived
+      NdbSleep_MilliSleep(SAFETY);  // Hope that snapshot has arrived
 
       int res = pDic->alterTable(*org, altered);
       if (res) {
@@ -7667,7 +7670,7 @@ int runFailAddPartition(NDBT_Context *ctx, NDBT_Step *step) {
       CHECK2(restarter.insertErrorInNode(nodeId, 0) == 0,
              "failed to clear error insert");
       CHECK(restarter.dumpStateAllNodes(&dump2, 1) == 0);
-      NdbSleep_MilliSleep(SAFTY);  // Hope that snapshot has arrived
+      NdbSleep_MilliSleep(SAFETY);  // Hope that snapshot has arrived
 
       int dump3[] = {DumpStateOrd::DihAddFragFailCleanedUp, org->getTableId()};
       CHECK(restarter.dumpStateAllNodes(dump3, 2) == 0);

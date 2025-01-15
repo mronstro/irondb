@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -3221,6 +3221,7 @@ private:
   void execNEXT_SCANREF(Signal* signal);
   void execACC_CHECK_SCAN(Signal* signal);
   void execACC_TO_REF(Signal* signal, TcConnectionrecPtr);
+  void execCOPY_FRAG_DONE_REP(Signal* signal);
   void execCOPY_FRAGREQ(Signal* signal);
   void execCOPY_FRAGREF(Signal* signal);
   void execCOPY_FRAGCONF(Signal* signal);

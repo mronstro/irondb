@@ -83,8 +83,8 @@ extern EventLogger * g_eventLogger;
 extern NodeBitmask g_not_active_nodes;
 
 #if (defined(VM_TRACE) || defined(ERROR_INSERT))
-//#define DEBUG_MULTI_SETUP 1
-//#define DEBUG_MULTI_TRP 1
+#define DEBUG_MULTI_SETUP 1
+#define DEBUG_MULTI_TRP 1
 //#define DEBUG_STARTUP 1
 //#define DEBUG_ARBIT 1
 //#define DEBUG_ACTIVATE 1
