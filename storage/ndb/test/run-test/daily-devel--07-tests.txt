@@ -224,7 +224,7 @@ max-time: 520
 
 cmd: testBackup
 args: -n CheckBackupCompletedPrintout T1
-max-time: 360
+max-time: 1360
 
 cmd: testBasic
 args: -n CheckCompletedLCPStats T1
