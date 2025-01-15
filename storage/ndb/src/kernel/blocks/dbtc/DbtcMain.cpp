@@ -10984,20 +10984,6 @@ void Dbtc::timeOutFoundLab(Signal *signal, Uint32 TapiConPtr, Uint32 errCode) {
       abortErrorLab(signal, apiConnectptr);
       break;
     }
-    case CS_COMMITTING:
-      jam();
-      /*------------------------------------------------------------------*/
-      // We are simply waiting for a signal in the job buffer. Only extreme
-      // conditions should get us here. We ignore it.
-      /*------------------------------------------------------------------*/
-      [[fallthrough]];
-    case CS_COMPLETING:
-      jam();
-      /*------------------------------------------------------------------*/
-      // We are simply waiting for a signal in the job buffer. Only extreme
-      // conditions should get us here. We ignore it.
-      /*------------------------------------------------------------------*/
-      [[fallthrough]];
     case CS_PREPARE_TO_COMMIT: {
       jam();
       /**
@@ -11011,6 +10997,7 @@ void Dbtc::timeOutFoundLab(Signal *signal, Uint32 TapiConPtr, Uint32 errCode) {
       periodicLogOddTimeoutAndResetTimer(apiConnectptr);
       break;
     }
+    case CS_COMMITTING:
     case CS_COMMIT_SENT:
     {
       jam();
@@ -11049,6 +11036,7 @@ void Dbtc::timeOutFoundLab(Signal *signal, Uint32 TapiConPtr, Uint32 errCode) {
       }
       break;
     }
+    case CS_COMPLETING:
     case CS_COMPLETE_SENT:
     {
       jam();
