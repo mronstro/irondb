@@ -580,7 +580,11 @@ const ConfigInfo::ParamInfo ConfigInfo::m_ParamInfo[] = {
     ConfigInfo::CI_USED,
     false,
     ConfigInfo::CI_BOOL,
+#if (defined(VM_TRACE) || defined(ERROR_INSERT))
+    "true",
+#else
     "false",
+#endif
     "false",
     "true" },
 
