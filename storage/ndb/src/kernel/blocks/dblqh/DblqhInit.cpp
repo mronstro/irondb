@@ -676,6 +676,7 @@ Dblqh::Dblqh(Block_context &ctx, Uint32 instanceNumber, Uint32 blockNo)
     addRecSignal(GSN_NEXT_SCANCONF, &Dblqh::execNEXT_SCANCONF);
     addRecSignal(GSN_NEXT_SCANREF, &Dblqh::execNEXT_SCANREF);
     addRecSignal(GSN_ACC_CHECK_SCAN, &Dblqh::execACC_CHECK_SCAN);
+    addRecSignal(GSN_COPY_FRAG_DONE_REP, &Dblqh::execCOPY_FRAG_DONE_REP);
     addRecSignal(GSN_COPY_FRAGREQ, &Dblqh::execCOPY_FRAGREQ);
     addRecSignal(GSN_COPY_FRAGREF, &Dblqh::execCOPY_FRAGREF);
     addRecSignal(GSN_COPY_FRAGCONF, &Dblqh::execCOPY_FRAGCONF);

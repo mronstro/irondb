@@ -3221,6 +3221,7 @@ private:
   void execNEXT_SCANREF(Signal* signal);
   void execACC_CHECK_SCAN(Signal* signal);
   void execACC_TO_REF(Signal* signal, TcConnectionrecPtr);
+  void execCOPY_FRAG_DONE_REP(Signal* signal);
   void execCOPY_FRAGREQ(Signal* signal);
   void execCOPY_FRAGREF(Signal* signal);
   void execCOPY_FRAGCONF(Signal* signal);
