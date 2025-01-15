@@ -183,6 +183,9 @@ VALUES
         32, 'sample_complex_type_512', 1091, Timestamp('2023-09-26 10:02:58'), 10000, 1, NULL, 2, NULL, NULL, 18, 'ts', 1, NULL, NULL, FALSE, 0
     ),
     (
+        33, 'date_array', 1091, Timestamp('2023-09-26 10:02:58'), 10000, 1, NULL, 2, NULL, NULL, 18, 'ts', 1, NULL, NULL, FALSE, 0
+    ),
+    (
         3090, 'sample_4', 67, Timestamp('2023-05-08 15:20:51'), 10000, 1, NULL, 2, NULL, NULL, 2065, 'ts', 1, NULL, NULL, FALSE, 0
     );
 
@@ -314,6 +317,9 @@ VALUES
     (
 	    20, 'sample_complex_type_512', 1091, Timestamp('2023-09-26 10:03:16'), 10000, 1, ''
     ),
+    (
+	    21, 'date_array', 1091, Timestamp('2023-09-26 10:03:16'), 10000, 1, ''
+    ),
     /**
     SELECT `fg0`.`id1` `id1`, `fg0`.`ts` `ts`, `fg0`.`data1` `data1`, `fg0`.`data2` `data2`, `fg1`.`id1` `id1`, `fg1`.`bigint` `bigint`
     FROM `test_ken_featurestore`.`sample_1_1` `fg0`
@@ -440,6 +446,9 @@ VALUES
     ),
     (
         26, NULL, 32, NULL, NULL, 0, 0, 0, NULL, 20
+    ),
+    (
+        27, NULL, 33, NULL, NULL, 0, 0, 0, NULL, 21
     ),
     (
         5133, NULL, 2069, NULL, NULL, 0, 0, 0, NULL, 4117
@@ -812,6 +821,15 @@ VALUES
         60, NULL, 32, 'embedding', 'array<long>', 26, 1, 0, 0, 0, 20, NULL
     ),
     (
+        61, NULL, 33, 'pk', 'string', 27, 0, 0, 0, 0, 21, NULL
+    ),
+    (
+        62, NULL, 33, 'ts', 'timestamp', 27, 1, 0, 0, 0, 21, NULL
+    ),
+    (
+        63, NULL, 33, 'data', 'array<struct<sku:string,ts:timestamp>>', 27, 2, 0, 0, 0, 21, NULL
+    ),
+    (
         5148, NULL, 2069, 'data1', 'bigint', 5133, 2, 0, 0, 0, 4117, NULL
     ),
     (
@@ -1048,6 +1066,9 @@ VALUES
     ),
     (
         1520, NULL, 'id', NULL, 0, 32, 1, 20 
+    ),
+    (
+        1521, NULL, 'pk', NULL, 0, 33, 1, 21 
     );
 
 INSERT INTO
@@ -1061,6 +1082,9 @@ VALUES
     ),
     (
 	    22, '{"type":"record","name":"sample_complex_type_512_1","namespace":"test_ken_featurestore.db","fields":[{"name":"id","type":["null","string"]},{"name":"embedding","type":["null",{"type":"array","items":["null","long"]}]}]}', 1001
+    ),
+    (
+	    23, '{"type":"record","name":"date_array_1","namespace":"salmanap_featurestore.db","fields":[{"name":"pk","type":["null","string"]},{"name":"ts","type":["null",{"type":"long","logicalType":"timestamp-micros"}]},{"name":"data","type":["null",{"type":"array","items":["null",{"type":"record","name":"r515636140","namespace":"data","fields":[{"name":"sku","type":["null","string"]},{"name":"ts","type":["null",{"type":"long","logicalType":"timestamp-micros"}]}]}]}]}]}', 1001
     );
 
 INSERT INTO
@@ -1074,4 +1098,7 @@ VALUES
     ),
     (
         23, 'sample_complex_type_512_1', 1, 22, 1001, Timestamp('2023-09-27 10:02:58')
+    ),
+    (
+        24, 'date_array_1', 1, 23, 1001, Timestamp('2023-09-27 10:02:58')
     );
