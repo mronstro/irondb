@@ -29,7 +29,7 @@
 #ifndef RONDIS_COMMON_H
 #define RONDIS_COMMON_H
 
-#define MAX_CONNECTIONS 2
+#define RONDIS_MAX_CONNECTIONS 2
 
 #define REDIS_DB_NAME "redis"
 

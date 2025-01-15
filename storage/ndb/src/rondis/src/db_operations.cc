@@ -210,6 +210,7 @@ complex_delete_callback(int result, NdbTransaction *trans, void *aObject) {
 }
 
 int prepare_complex_delete_row(std::string *response,
+                               [[maybe_unused]]/*todo remove?*/
                                const NdbDictionary::Table *tab,
                                struct KeyStorage *key_storage) {
   struct key_table *key_row = &key_storage->m_key_row;
@@ -830,6 +831,7 @@ void prepare_read_transaction(struct KeyStorage *key_storage) {
 }
 
 int prepare_get_simple_key_row(std::string *response,
+                               [[maybe_unused]]/*todo remove?*/
                                const NdbDictionary::Table *tab,
                                NdbTransaction *trans,
                                struct key_table *key_row) {
@@ -906,7 +908,7 @@ void prepare_simple_read_transaction(struct KeyStorage *key_storage) {
  * --------------------
  */
 void incr_decr_key_row(std::string *response,
-                       Ndb *ndb,
+                       [[maybe_unused]]/*todo remove?*/ Ndb *ndb,
                        const NdbDictionary::Table *tab,
                        NdbTransaction *trans,
                        struct key_table *key_row,
@@ -1000,10 +1002,11 @@ void incr_decr_key_row(std::string *response,
   DEB_INCR(("INCR/DECR success, new value: %lld\n", new_incremented_value));
   /* Send the return message to Redis client */
   char header_buf[20];
-  int header_len = snprintf(header_buf,
-                            sizeof(header_buf),
-                            ":%lld\r\n",
-                            new_incremented_value);
+  [[maybe_unused]]/*todo remove?*/ int header_len =
+    snprintf(header_buf,
+      sizeof(header_buf),
+      ":%lld\r\n",
+      new_incremented_value);
   response->append(header_buf);
 }
 

@@ -29,95 +29,10 @@
 
 #include <ndbapi/NdbApi.hpp>
 #include <ndbapi/Ndb.hpp>
-#include "server_thread.h"
-#include "pink_conn.h"
-#include "redis_conn.h"
-#include "pink_thread.h"
-#include "dispatch_thread.h"
-#include "rondb.h"
 #include "common.h"
+#include "rondis_thread.h"
 
 using namespace pink;
-
-std::vector<Ndb *> ndb_objects;
-std::map<std::string, std::string> db;
-
-class RondisHandle : public ServerHandle
-{
-public:
-    RondisHandle() : counter(0) {}
-
-    /*
-        We define this so each connection knows from which worker thread it is
-        running from. This enables us to to distribute Ndb objects across
-        multiple worker threads.
-    */
-    int CreateWorkerSpecificData(void **data) const override
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        *data = new int(counter++);
-        return 0;
-    }
-
-private:
-    mutable std::mutex mutex;
-    mutable int counter;
-};
-
-class RondisConn : public RedisConn
-{
-public:
-    RondisConn(
-        int fd,
-        const std::string &ip_port,
-        Thread *thread,
-        void *worker_specific_data);
-    virtual ~RondisConn() = default;
-
-protected:
-    int DealMessage(const RedisCmdArgsType &argv, std::string *response) override;
-
-private:
-    int _worker_id;
-};
-
-RondisConn::RondisConn(
-    int fd,
-    const std::string &ip_port,
-    Thread *thread,
-    void *worker_specific_data)
-    : RedisConn(fd, ip_port, thread)
-{
-    int worker_id = *static_cast<int *>(worker_specific_data);
-    _worker_id = worker_id;
-}
-
-int RondisConn::DealMessage(const RedisCmdArgsType &argv, std::string *response)
-{
-    /*    
-        printf("Received Redis message: ");
-        for (int i = 0; i < argv.size(); i++)
-        {
-            printf("%s ", argv[i].c_str());
-        }
-        printf("\n");
-    */
-    return rondb_redis_handler(argv, response, _worker_id);
-}
-
-class RondisConnFactory : public ConnFactory
-{
-public:
-    virtual std::shared_ptr<PinkConn> NewPinkConn(
-        int connfd,
-        const std::string &ip_port,
-        Thread *thread,
-        void *worker_specific_data,
-        pink::PinkEpoll *pink_epoll = nullptr) const
-    {
-        return std::make_shared<RondisConn>(connfd, ip_port, thread, worker_specific_data);
-    }
-};
 
 static std::atomic<bool> running(false);
 
@@ -154,8 +69,8 @@ int main(int argc, char *argv[])
     }
     printf("Server will listen to %d and connect to MGMd at %s\n", port, connect_string);
 
-    if (worker_threads < MAX_CONNECTIONS) {
-        printf("Number of worker threads must be at least %d, otherwise we are wasting resources\n", MAX_CONNECTIONS);
+    if (worker_threads < RONDIS_MAX_CONNECTIONS) {
+        printf("Number of worker threads must be at least %d, otherwise we are wasting resources\n", RONDIS_MAX_CONNECTIONS);
         return -1;
     }
 
@@ -188,6 +103,7 @@ int main(int argc, char *argv[])
     my_thread->StopThread();
 
     delete my_thread;
+    delete handle;
     delete conn_factory;
 
     rondb_end();

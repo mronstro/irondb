@@ -63,7 +63,8 @@ class RedisConn: public PinkConn {
   virtual int WriteResp(const std::string& resp) override;
 
   void TryResizeBuffer() override;
-  void SetHandleType(const HandleType& handle_type);
+  void SetHandleType([[maybe_unused]]/*todo remove?*/
+                     const HandleType& handle_type);
   HandleType GetHandleType();
 
   virtual void ProcessRedisCmds(const std::vector<RedisCmdArgsType>& argvs, bool async, std::string* response);

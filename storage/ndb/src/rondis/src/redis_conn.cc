@@ -227,7 +227,10 @@ HandleType RedisConn::GetHandleType() {
   return handle_type_;
 }
 
-void RedisConn::ProcessRedisCmds(const std::vector<RedisCmdArgsType>& argvs, bool async, std::string* response) {
+void RedisConn::ProcessRedisCmds(
+  [[maybe_unused]]/*todo remove?*/ const std::vector<RedisCmdArgsType>& argvs,
+  [[maybe_unused]]/*todo remove?*/ bool async,
+  [[maybe_unused]]/*todo remove?*/ std::string* response) {
 }
 
 void RedisConn::NotifyEpoll(bool success) {

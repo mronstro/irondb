@@ -191,7 +191,13 @@ int init_record(NdbDictionary::Dictionary *dict,
                 std::map<const NdbDictionary::Column *, std::pair<size_t, int>> column_info_map,
                 NdbRecord *&record)
 {
-    NdbDictionary::RecordSpecification col_specs[column_info_map.size()];
+    // todo maybe avoid malloc
+    NdbDictionary::RecordSpecification* col_specs =
+        reinterpret_cast<NdbDictionary::RecordSpecification*>(malloc(
+            sizeof(NdbDictionary::RecordSpecification) *
+            column_info_map.size()));
+    if(!col_specs) { return -1; }
+
     int i = 0;
     for (const auto &entry : column_info_map)
     {
@@ -206,6 +212,7 @@ int init_record(NdbDictionary::Dictionary *dict,
                                 column_info_map.size(),
                                 sizeof(col_specs[0]));
 
+    free(col_specs);
     return (record == nullptr) ? -1 : 0;
 }
 

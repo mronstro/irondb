@@ -92,6 +92,7 @@ int prepare_get_key_row(std::string *response,
                         NdbTransaction *trans,
                         struct key_table *key_row);
 int prepare_get_simple_key_row(std::string *response,
+                               [[maybe_unused]]/*todo remove?*/
                                const NdbDictionary::Table *tab,
                                NdbTransaction *trans,
                                struct key_table *key_row);

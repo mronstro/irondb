@@ -51,6 +51,7 @@
  *   define_class_including_dependencies(AllConfigs);
  */
 #include <ndb_types.h>
+#include "common.h"
 
 // todo Add docstring for all CM()
 
@@ -87,8 +88,78 @@ CLASS
  PROBLEM(!enable, "REST must be enabled")
  PROBLEM(serverIP.empty(), "REST server IP cannot be empty")
  PROBLEM(serverPort == 0, "REST server port cannot be zero")
- PROBLEM(numThreads == 0, "Number of threads cannot be zero")
- PROBLEM(numThreads > 991, "Number of threads too high")
+ PROBLEM(numThreads == 0, "Number of REST threads cannot be zero")
+ PROBLEM(numThreads > 991, "Number of REST threads too high")
+)
+
+CLASS
+(RondisDatabaseConfig,
+ CM(int, index, Index, -1, // Set the default to an illegal value as a hack to
+                           // make this field mandatory.
+    "The name of the database, in the form of an integer. The first database is"
+    " named 0.")
+ CM(bool, fastHcount, FastHCOUNT, false, "Whether to optimize for HCOUNT")
+ CM(std::string, mode, Mode, "RONDB",
+    "Database mode."
+    " COMPATIBLE = todo add description."
+    " CLUSTER = todo add description."
+    " RONDB = todo add description."
+    )
+ PROBLEM(mode != "COMPATIBLE" && mode != "CLUSTER" && mode != "RONDB",
+         "Invalid rondis database mode")
+ CLASSDEFS
+ (
+  RondisDatabaseConfig(int index)
+  : index(index),
+    fastHcount(false),
+    mode("RONDB")
+  {}
+ )
+)
+
+VECTOR(RondisDatabaseConfig)
+
+#define TO_STRING_CONSTANT(x) TO_STRING_CONSTANT_(x)
+#define TO_STRING_CONSTANT_(x) #x
+
+CLASS
+(RondisConfig,
+ CM(bool, enable, Enable, false, "Whether to enable the Rondis server.")
+ CM(std::string, serverIP, ServerIP, "0.0.0.0", "The IP address to listen on.")
+ CM(Uint16, serverPort, ServerPort, 6379, "TCP port to listen on.")
+ CM(unsigned, numThreads, NumThreads, 16, "Number of rondis threads.")
+ CM(unsigned, numDatabases, NumDatabases, 1, "Number of rondis databases.")
+ CM(std::vector<RondisDatabaseConfig>, databases, Databases,
+    {RondisDatabaseConfig(0)},
+    "Database-specific configuration.")
+ PROBLEM(serverIP.empty(), "Rondis server IP cannot be empty")
+ PROBLEM(serverIP != "0.0.0.0",
+         "Setting rondis server IP to anything else than 0.0.0.0 is not yet"
+         " implemented.")
+ PROBLEM(serverPort == 0, "Rondis server port cannot be zero.")
+ PROBLEM(numThreads == 0, "Number of rondis threads cannot be zero.")
+ PROBLEM(numThreads < RONDIS_MAX_CONNECTIONS,
+         "Number of worker threads must be at least "
+         TO_STRING_CONSTANT(RONDIS_MAX_CONNECTIONS))
+ PROBLEM(numThreads > 991, "Number of rondis threads too high")
+ PROBLEM(numDatabases == 0, "Number of rondis databases cannot be zero.")
+ PROBLEM(numDatabases > 1000, "Number of rondis databases too high")
+ PROBLEM(databases.size() != numDatabases,
+         "Rondis.NumDatabases must match the length of Rondis.Databases")
+ PROBLEM(value.hasIndexProblem(),
+         "The indexes in rondis database configurations must start at 0 and"
+         " increment by 1")
+ CLASSDEFS
+ (
+  bool hasIndexProblem() {
+   for (int i = 0; (long unsigned)i < databases.size(); i++) {
+    if (databases[i].index != i) {
+     return true;
+    }
+   }
+   return false;
+  }
+ )
 )
 
 CLASS
@@ -295,6 +366,8 @@ CLASS
     "Path to .pid file. The process ID will be written on startup, and the file"
     " will be deleted on exit.")
  CM(REST, rest, REST, REST(), "REST server settings.")
+ CM(RondisConfig, rondis, Rondis, RondisConfig(),
+    "An object describing configuration for the rondis server")
  CM(GRPC, grpc, GRPC, GRPC(),
     "gRPC server settings. gRPC is currently not supported.")
  CM(RonDB, ronDB, RonDB, RonDB(),

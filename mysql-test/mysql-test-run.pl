@@ -5158,7 +5158,8 @@ sub run_testcase ($) {
     }
     foreach my $rdrs (rdrss()) {
       mtr_print($rdrs->name() .
-               "  " . $rdrs->value('port'));
+               "  RDRS port " . $rdrs->value('port') .
+               ", rondis port " . $rdrs->value('rondisport'));
     }
 
     if ($opt_start_exit) {
@@ -6805,7 +6806,13 @@ sub rdrs_start ($$) {
   my $host = $rdrs->value('#host');
   my $port = $rdrs->value('port');
   if (!sleep_until_port_opened($port, $opt_start_timeout, $host)) {
-    mtr_error("Failed while waiting for TCP server $host:$port to open.");
+    mtr_error("Failed while waiting for REST TCP server $host:$port to open.");
+  }
+  if (($rdrs->if_exist('enable-rondis') // '') eq 'true') {
+    my $rondisport = $rdrs->value('rondisport');
+    if (!sleep_until_port_opened($rondisport, $opt_start_timeout, $host)) {
+      mtr_error("Failed while waiting for rondis TCP server $host:$rondisport to open.");
+    }
   }
 
   return;
