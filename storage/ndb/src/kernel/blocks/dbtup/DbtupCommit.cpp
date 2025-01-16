@@ -1513,6 +1513,10 @@ void Dbtup::disk_page_log_buffer_callback(Signal *signal, Uint32 opPtrI,
                      &transId1,
                      &transId2);
   Uint32 page = regOperPtr.p->m_disk_callback_page;
+  if (regOperPtr.p->m_disk_extra_callback_page != RNIL) {
+    jam();
+    page = regOperPtr.p->m_disk_extra_callback_page;
+  }
   prepare_oper_ptr = regOperPtr;
 
   TupCommitReq *const tupCommitReq = (TupCommitReq *)signal->getDataPtr();
@@ -2251,7 +2255,6 @@ Uint32 Dbtup::exec_tup_commit(Signal *signal) {
   req_struct.trans_id1 = transId1;
   req_struct.trans_id2 = transId2;
   req_struct.m_reorg = regOperPtr.p->op_struct.bit_field.m_reorg;
-  regOperPtr.p->m_disk_callback_page = tupCommitReq.diskpage;
 
   ptrCheckGuard(regTabPtr, no_of_tablerec, tablerec);
   PagePtr tupPagePtr;
@@ -2268,6 +2271,8 @@ Uint32 Dbtup::exec_tup_commit(Signal *signal) {
     diskPagePtr.p = 0;
     req_struct.m_disk_page_ptr.i = RNIL;
     req_struct.m_disk_page_ptr.p = 0;
+    regOperPtr.p->m_disk_callback_page = RNIL;
+    regOperPtr.p->m_disk_extra_callback_page = RNIL;
   } else {
     jamDebug();
     ndbrequire(m_global_page_pool.getPtr(diskPagePtr, diskPagePtr.i));
