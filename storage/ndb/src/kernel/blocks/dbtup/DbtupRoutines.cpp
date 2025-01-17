@@ -2184,6 +2184,36 @@ int Dbtup::updateAttributes(KeyReqStruct *req_struct,
         thrjam(req_struct->jamBuffer);
         return -ZAI_INCONSISTENCY_ERROR;
       }
+    } else if (attributeId == AttributeHeader::ROW_GCI64) {
+      thrjam(req_struct->jamBuffer);
+      Uint32 sz = ahIn.getDataSize();
+      ndbrequire(sz == 2);
+      Uint32 attrId = regTabPtr->getExtraAttrId<Tablerec::TR_ExtraRowGCIBits>();
+      Uint32 gciLo = *(inBuffer + inBufIndex + 1);
+      Uint32 gciHi = *(inBuffer + inBufIndex + 2);
+
+      if (unlikely(!(regTabPtr->m_bits & Tablerec::TR_RowGCI))) {
+        thrjam(req_struct->jamBuffer);
+        return -ZATTRIBUTE_ID_ERROR;
+      }
+
+      /* Record that GCI has been set explicitly */
+      regOperPtr->op_struct.bit_field.m_gci_written = 1;
+
+      *req_struct->m_tuple_ptr->get_mm_gci(regTabPtr) = gciHi;
+
+      if (regTabPtr->m_bits & Tablerec::TR_ExtraRowGCIBits) {
+        if (unlikely(store_extra_row_bits(attrId, regTabPtr,
+                                          req_struct->m_tuple_ptr, gciLo,
+                                          /*truncate*/ true) == false)) {
+          thrjam(req_struct->jamBuffer);
+          ndbassert(false);
+          return -ZAI_INCONSISTENCY_ERROR;
+        }
+      }
+
+      inBufIndex += 1 + sz;
+      req_struct->in_buf_index = inBufIndex;
     } else {
       thrjam(req_struct->jamBuffer);
       thrjamDataDebug(req_struct->jamBuffer, attributeId);

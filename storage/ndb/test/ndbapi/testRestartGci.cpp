@@ -117,7 +117,7 @@ int runInsertRememberGci(NDBT_Context *ctx, NDBT_Step *step) {
   Uint64 maxGci = 0;
   Uint32 numAuthorBits = ctx->getTab()->getExtraRowAuthorBits();
   Uint32 authorMask = (1 << numAuthorBits) - 1;
-  ndbout_c("numAuthor bits is %u, mask is %x", numAuthorBits, authorMask);
+  ndbout_c("numAuthor bits is %u, mask is 0x%x", numAuthorBits, authorMask);
 
   while (i < records) {
     // Insert record and read it in same transaction
@@ -173,7 +173,7 @@ int runInsertRememberGci(NDBT_Context *ctx, NDBT_Step *step) {
     NdbSleep_MilliSleep(10);
   };
 
-  ndbout_c("  Inserted records from gci %x/%x to gci %x/%x",
+  ndbout_c("  Inserted records from gci 0x%x/0x%x to gci 0x%x/0x%x",
            (Uint32)(minGci >> 32), (Uint32)(minGci & 0xffffffff),
            (Uint32)(maxGci >> 32), (Uint32)(maxGci & 0xffffffff));
 
@@ -268,11 +268,11 @@ int runDetermineRestartGci(NDBT_Context *ctx, NDBT_Step *step) {
 
   ndbout_c("Restart GCI is %u (0x%x)", restartGci, restartGci);
 
-  ndbout_c("Highest expected GCI was %x/%x", (Uint32)(highestExpectedGci >> 32),
+  ndbout_c("Highest expected GCI was 0x%x/0x%x", (Uint32)(highestExpectedGci >> 32),
            (Uint32)(highestExpectedGci & 0xffffffff));
 
   highestExpectedGci = ((Uint64)restartGci) << 32 | 0xffffffff;
-  ndbout_c("Resetting Highest expected GCI to align with restart Gci (%x/%x)",
+  ndbout_c("Resetting Highest expected GCI to align with restart Gci (0x%x/0x%x)",
            (Uint32)(highestExpectedGci >> 32),
            (Uint32)(highestExpectedGci & 0xffffffff));
   return NDBT_OK;
@@ -374,8 +374,8 @@ int runVerifyInserts(NDBT_Context *ctx, NDBT_Step *step) {
           recordsWithRoundedGci++;
         } else {
           ndbout_c(
-              "ERR: Record %u should have GCI %x/%x, but has "
-              "%x/%x.",
+              "ERR: Record %u should have GCI 0x%x/0x%x, but has "
+              "0x%x/0x%x.",
               i, (Uint32)(expectedRead >> 32),
               (Uint32)(expectedRead & 0xffffffff), (Uint32)(readGci >> 32),
               (Uint32)(readGci & 0xffffffff));
@@ -401,7 +401,7 @@ int runVerifyInserts(NDBT_Context *ctx, NDBT_Step *step) {
   ndbout << "There are " << count << " records in db" << endl;
   ndbout << "There are " << savedRecords.size() << " records in vector" << endl;
 
-  ndbout_c("There are %u records with lower or same gci than %x/%x",
+  ndbout_c("There are %u records with lower or same gci than 0x%x/0x%x",
            recordsWithLowerOrSameGci, (Uint32)(highestExpectedGci >> 32),
            (Uint32)(highestExpectedGci & 0xffffffff));
 
@@ -531,22 +531,23 @@ int runUpdateVerifyGCI(NDBT_Context *ctx, NDBT_Step *step) {
                                        ? committedGCI | 0xffffffff
                                        : committedGCI;
     Uint64 rowGCI64 = rowGci->u_64_value();
-
-    //    ndbout_c("Read row GCI64 %x/%x.  Committed GCI64 : %x/%x.  Saturated
-    //    GCI64 :%x/%x Last good read : %x/%x",
-    //             Uint32(rowGCI64 >> 32),
-    //             Uint32(rowGCI64 & 0xffffffff),
-    //             Uint32(committedGCI >> 32),
-    //             Uint32(committedGCI & 0xffffffff),
-    //             Uint32(saturatedCommittedGCI >> 32),
-    //             Uint32(saturatedCommittedGCI & 0xffffffff),
-    //             Uint32(lastGoodReadGCI >> 32),
-    //             Uint32(lastGoodReadGCI & 0xffffffff));
-
+#if 0
+    ndbout_c("Read row GCI64 0x%x/0x%x. "
+             "  Committed GCI64 : 0x%x/0x%x.  Saturated "
+             "GCI64 :0x%x/0x%x Last good read : 0x%x/0x%x",
+             Uint32(rowGCI64 >> 32),
+             Uint32(rowGCI64 & 0xffffffff),
+             Uint32(committedGCI >> 32),
+             Uint32(committedGCI & 0xffffffff),
+             Uint32(saturatedCommittedGCI >> 32),
+             Uint32(saturatedCommittedGCI & 0xffffffff),
+             Uint32(lastGoodReadGCI >> 32),
+             Uint32(lastGoodReadGCI & 0xffffffff));
+#endif
     if (rowGCI64 < lastGoodReadGCI) {
       ndbout_c(
-          "ERROR : Read row GCI value (%x/%x) lower than previous value "
-          "(%x/%x)",
+          "ERROR : Read row GCI value (0x%x/0x%x) lower than previous value "
+          "(0x%x/0x%x)",
           (Uint32)(rowGCI64 >> 32), (Uint32)(rowGCI64 & 0xffffffff),
           Uint32(lastGoodReadGCI >> 32), Uint32(lastGoodReadGCI & 0xffffffff));
     }
@@ -555,8 +556,8 @@ int runUpdateVerifyGCI(NDBT_Context *ctx, NDBT_Step *step) {
      */
     if (saturatedCommittedGCI < rowGCI64) {
       ndbout_c(
-          "ERROR : Saturated committed GCI (%x/%x) lower than actual read GCI "
-          "(%x/%x)",
+          "ERROR : Saturated committed GCI (0x%x/0x%x) lower than actual read GCI "
+          "(0x%x/0x%x)",
           Uint32(saturatedCommittedGCI >> 32),
           Uint32(saturatedCommittedGCI & 0xffffffff), (Uint32)(rowGCI64 >> 32),
           (Uint32)(rowGCI64 & 0xffffffff));
@@ -566,8 +567,8 @@ int runUpdateVerifyGCI(NDBT_Context *ctx, NDBT_Step *step) {
      */
     if (saturatedCommittedGCI < lastGoodReadGCI) {
       ndbout_c(
-          "ERROR : Saturated committed GCI (%x/%x) lower than a previously"
-          "read GCI (%x/%x)",
+          "ERROR : Saturated committed GCI (0x%x/0x%x) lower than a previously"
+          "read GCI (0x%x/0x%x)",
           Uint32(saturatedCommittedGCI >> 32),
           Uint32(saturatedCommittedGCI & 0xffffffff),
           Uint32(lastGoodReadGCI >> 32), Uint32(lastGoodReadGCI & 0xffffffff));
@@ -577,8 +578,8 @@ int runUpdateVerifyGCI(NDBT_Context *ctx, NDBT_Step *step) {
      */
     if (saturatedCommittedGCI < expectedGCI) {
       ndbout_c(
-          "ERROR : Saturated committed GCI (%x/%x) lower than expected GCI"
-          " (%x/%x)",
+          "ERROR : Saturated committed GCI (0x%x/0x%x) lower than expected GCI"
+          " (0x%x/0x%x)",
           Uint32(saturatedCommittedGCI >> 32),
           Uint32(saturatedCommittedGCI & 0xffffffff), Uint32(expectedGCI >> 32),
           Uint32(expectedGCI & 0xffffffff));
@@ -586,14 +587,14 @@ int runUpdateVerifyGCI(NDBT_Context *ctx, NDBT_Step *step) {
 
     if (loopCount > 0) {
       if (rowGCI64 != expectedGCI) {
-        ndbout_c("MISMATCH : Expected GCI of %x/%x, but found %x/%x",
+        ndbout_c("MISMATCH : Expected GCI of 0x%x/0x%x, but found 0x%x/0x%x",
                  (Uint32)(expectedGCI >> 32),
                  (Uint32)(expectedGCI & 0xffffffff), (Uint32)(rowGCI64 >> 32),
                  (Uint32)(rowGCI64 & 0xffffffff));
         ndbout_c("At loopcount %llu", loopCount);
-        ndbout_c("Last good read GCI %x/%x", Uint32(lastGoodReadGCI >> 32),
+        ndbout_c("Last good read GCI 0x%x/0x%x", Uint32(lastGoodReadGCI >> 32),
                  Uint32(lastGoodReadGCI & 0xffffffff));
-        ndbout_c("Read committed GCI : %x/%x",
+        ndbout_c("Read committed GCI : 0x%x/0x%x",
                  Uint32(saturatedCommittedGCI >> 32),
                  Uint32(saturatedCommittedGCI & 0xffffffff));
         ndbout_c("Transaction coordinator node : %u",
