@@ -154,8 +154,10 @@ int init_value_records(NdbDictionary::Dictionary *dict)
     const NdbDictionary::Column *rondb_key_col = tab->getColumn(VALUE_TABLE_COL_rondb_key);
     const NdbDictionary::Column *ordinal_col = tab->getColumn(VALUE_TABLE_COL_ordinal);
     const NdbDictionary::Column *value_col = tab->getColumn(VALUE_TABLE_COL_value);
+    const NdbDictionary::Column *expiry_date_col = tab->getColumn(VALUE_TABLE_COL_expiry_date);
     if (rondb_key_col == nullptr ||
         ordinal_col == nullptr ||
+        expiry_date_col == nullptr ||
         value_col == nullptr)
     {
         printf("Failed getting Ndb columns for table %s\n", VALUE_TABLE_NAME);
@@ -175,6 +177,7 @@ int init_value_records(NdbDictionary::Dictionary *dict)
     std::map<const NdbDictionary::Column *, std::pair<size_t, int>> read_all_column_map = {
         {rondb_key_col, {offsetof(struct value_table, rondb_key), 0}},
         {ordinal_col, {offsetof(struct value_table, ordinal), 0}},
+        {expiry_date_col, {offsetof(struct value_table, expiry_date), 1}},
         {value_col, {offsetof(struct value_table, value), 0}}};
 
     if (init_record(dict, tab, read_all_column_map, entire_value_record) != 0)

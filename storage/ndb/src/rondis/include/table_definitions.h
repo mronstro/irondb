@@ -88,7 +88,7 @@ struct key_table
     Uint32 null_bits;
     Uint64 redis_key_id;
     Uint64 rondb_key;
-    Uint32 expiry_date;
+    Int32 expiry_date;
     Uint32 value_data_type;
     Uint32 tot_value_len;
     // Technically implicit
@@ -116,11 +116,13 @@ extern NdbRecord *entire_value_record;
 #define VALUE_TABLE_COL_rondb_key "rondb_key"
 #define VALUE_TABLE_COL_ordinal "ordinal"
 #define VALUE_TABLE_COL_value "value"
+#define VALUE_TABLE_COL_expiry_date "expiry_date"
 
 struct value_table
 {
     Uint64 rondb_key;
     Uint32 ordinal;
+    Int32 expiry_date;
     char value[EXTENSION_VALUE_LEN + 2];
 };
 
@@ -180,6 +182,7 @@ struct KeyStorage {
     Uint32 m_num_rw_rows;
     Uint32 m_num_current_rw_rows;
     Uint32 m_prev_num_rows;
+    Int64 m_expire_at;
     union {
         Uint32 m_value_size;
         Uint32 m_error_code;

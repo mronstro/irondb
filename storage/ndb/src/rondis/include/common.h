@@ -67,4 +67,6 @@ Uint32 get_length(char* buf);
 #define REDIS_WRONG_NUMBER_OF_ARGS "wrong number of arguments for '%s' command"
 #define REDIS_NO_SUCH_KEY "$-1\r\n"
 #define REDIS_KEY_TOO_LARGE "key is too large (3000 bytes max)"
+#define REDIS_SYNTAX_ERROR "syntax error"
+#define REDIS_INVALID_TTL "invalid expire time in '%s' command"
 #endif

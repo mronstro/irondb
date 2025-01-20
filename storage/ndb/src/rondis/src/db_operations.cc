@@ -388,16 +388,18 @@ int prepare_set_value_row(std::string *response,
          &key_store->m_value_ptr[key_store->m_current_pos],
          len);
   set_length(&value_row.value[0], len);
+  value_row.expiry_date = key_store->m_expire_at;
   value_row.ordinal = key_store->m_num_rw_rows;
   value_row.rondb_key = key_store->m_rondb_key;
-  DEB_MSET(("Set value key: %u, rondb_key: %llu, ordinal: %u\n",
+  DEB_MSET(("Set value key: %u, rondb_key: %llu, ordinal: %u, expiry_date: %u\n",
     key_store->m_index,
     key_store->m_rondb_key,
-    key_store->m_num_rw_rows));
+    key_store->m_num_rw_rows,
+    value_row.expiry_date));
   key_store->m_num_rw_rows++;
   key_store->m_current_pos += len;
   /* Mask means writing all columns. */
-  const Uint32 mask = 0x7;
+  const Uint32 mask = 0xF;
   const unsigned char *mask_ptr = (const unsigned char *)&mask;
   const NdbOperation *write_op = key_store->m_trans->writeTuple(
     pk_value_record,
@@ -543,6 +545,7 @@ int write_data_to_key_op(std::string *response,
                          Uint32 num_value_rows,
                          bool commit_flag,
                          Uint32 row_state,
+                         Int32 expire_at,
                          NdbRecAttr **recAttr0,
                          NdbRecAttr **recAttr1) {
   struct key_table key_row;
@@ -555,7 +558,7 @@ int write_data_to_key_op(std::string *response,
   key_row.tot_value_len = tot_value_len;
   key_row.num_rows = num_value_rows;
   key_row.value_data_type = row_state;
-  key_row.expiry_date = 0;
+  key_row.expiry_date = expire_at;
   Uint32 this_value_len = tot_value_len;
   if (this_value_len > INLINE_VALUE_LEN) {
     this_value_len = INLINE_VALUE_LEN;
@@ -727,7 +730,7 @@ int prepare_get_value_row(std::string *response,
    * never be locked since we hold a lock on the key row
    * at this point.
    */
-  const Uint32 mask = 0x6;
+  const Uint32 mask = 0xC;
   const unsigned char *mask_ptr = (const unsigned char *)&mask;
   const NdbOperation *read_op = trans->readTuple(
     pk_value_record,
