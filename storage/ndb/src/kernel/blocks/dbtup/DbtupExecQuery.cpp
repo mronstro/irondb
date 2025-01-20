@@ -876,14 +876,15 @@ Dbtup::load_extra_diskpage(Signal *signal, Uint32 opRec, Uint32 flags)
 
   Page_cache_client pgman(this, c_pgman);
   int res = pgman.get_page(signal, req, flags);
-  if (res > 0)
+  if (res != 0)
   {
     jam();
-    operPtr.p->m_disk_extra_callback_page = Uint32(res);
+    if (res > 0)
+      operPtr.p->m_disk_extra_callback_page = Uint32(res);
     deref_disk_page(signal,
-        operPtr,
-        regFragPtr,
-        regTabPtr);
+      operPtr,
+      regFragPtr,
+      regTabPtr);
   }
   return res;
 }
@@ -934,11 +935,17 @@ Dbtup::disk_page_load_callback(Signal* signal, Uint32 opRec, Uint32 page_id)
     jam();
     c_lqh->setup_key_pointers(operPtr.p->userpointer);
     Uint32 flags = c_lqh->get_pgman_flags();
-    Uint32 extra_page_id = (Uint32)load_extra_diskpage(signal, opRec, flags);
+    int extra_page_id = load_extra_diskpage(signal, opRec, flags);
     if (extra_page_id == 0)
     {
       /* Save the disk callback page during real-time break. */
       operPtr.p->m_disk_callback_page = page_id;
+      return;
+    } else if (extra_page_id < 0) {
+      /* Error happened when loading extra disk page */
+      c_lqh->acckeyconf_load_diskpage_callback(signal, 
+        operPtr.p->userpointer,
+        0);
       return;
     }
   }
