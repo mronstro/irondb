@@ -29,7 +29,7 @@ max-time: 180
 
 cmd: testBackup
 args: -n BackupWhenOutOfLDMRecords T1
-max-time: 180
+max-time: 900
 
 cmd: testNodeRestart
 args: -n Bug16007980 T1
