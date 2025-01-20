@@ -197,7 +197,7 @@ int rondb_redis_handler(const pink::RedisCmdArgsType &argv,
         return 0;
       }
     } else if (strcasecmp(command, "SET") == 0) {
-      if (argv.size() == 3) {
+      if (argv.size() >= 3) {
         rondb_set_command(ndb, argv, response);
       } else {
         wrong_number_of_arguments(argv, response);

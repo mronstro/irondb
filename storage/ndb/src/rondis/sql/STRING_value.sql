@@ -26,7 +26,9 @@
 CREATE TABLE string_values(
     rondb_key BIGINT UNSIGNED NOT NULL,
     ordinal INT UNSIGNED NOT NULL,
+    expiry_date TIMESTAMP NOT NULL,
     value VARBINARY(29500) NOT NULL,
+    KEY ttl_index(expiry_date),
     PRIMARY KEY (rondb_key, ordinal)
 ) ENGINE NDB,
-COMMENT = "NDB_TABLE=PARTITION_BALANCE=RP_BY_LDM_X_8";
+COMMENT = "NDB_TABLE=PARTITION_BALANCE=FOR_RP_BY_LDM_X_8,TTL=0@expiry_date";

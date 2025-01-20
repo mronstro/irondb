@@ -75,6 +75,7 @@ int write_data_to_key_op(std::string *response,
                          Uint32 num_value_rows,
                          bool commit_flag,
                          Uint32 row_state,
+                         Int32 expire_at,
                          NdbRecAttr**,
                          NdbRecAttr**);
 

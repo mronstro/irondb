@@ -12,6 +12,8 @@
 #include "commands.h"
 #include "common.h"
 #include "table_definitions.h"
+#include "include/my_systime.h"
+#include "include/myisampack.h"
 
 #define RAND_CONSTANT 10000
 
@@ -194,6 +196,21 @@ execute_ndb(Ndb *ndb, int min_finished, int line) {
   (void)line;
   int finished = ndb->sendPollNdb(100, min_finished);
   return finished;
+}
+
+const Int32 g_max_expire_at = 0x7FFFFFFF;
+static void generate_expire_at(Int64* binary, Int64 ttl) {
+  *binary = 0;
+  time_t now = (time_t)my_micro_time() / 1000000;
+  if (ttl != -1) {
+    now += ttl;
+    if (now > g_max_expire_at) {
+      now = g_max_expire_at;
+    }
+  } else {
+    now = g_max_expire_at;
+  }
+  mi_int4store(binary, now);
 }
 
 /**
@@ -771,8 +788,9 @@ static int set_complex_rows(Ndb *ndb,
                                           key_storage[inx].m_num_rows,
                                           false,
                                           row_state,
-                                           &key_storage[inx].m_rec_attr_prev_num_rows,
-                                           &key_storage[inx].m_rec_attr_rondb_key);
+                                          key_storage[inx].m_expire_at,
+                                          &key_storage[inx].m_rec_attr_prev_num_rows,
+                                          &key_storage[inx].m_rec_attr_rondb_key);
       if (ret_code != 0) {
         return 1;
       }
@@ -870,6 +888,7 @@ static int set_simple_rows(Ndb *ndb,
                                         key_storage[inx].m_num_rows,
                                         true,
                                         row_state,
+                                        key_storage[inx].m_expire_at,
                                         &key_storage[inx].m_rec_attr_prev_num_rows,
                                         &key_storage[inx].m_rec_attr_rondb_key);
     if (ret_code != 0) {
@@ -905,8 +924,32 @@ void rondb_mset(Ndb *ndb,
                std::string *response,
                Uint64 redis_key_id)
 {
+  Int64 ttl = -1;
+  if (redis_key_id == STRING_REDIS_KEY_ID && argv.size() > 3) {
+    std::string opt = argv[3];
+    std::transform(opt.begin(), opt.end(), opt.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+    if (opt == "ex" && argv.size() > 4) {
+      std::string opt_val = argv[4];
+      ttl = std::stoi(opt_val);
+      if (ttl > 0) {
+      } else {
+        char error_message[256];
+        snprintf(error_message,
+                 sizeof(error_message),
+                 REDIS_INVALID_TTL,
+                 argv[0].c_str());
+        assign_generic_err_to_response(response, error_message);
+        return;
+      }
+    } else {
+      assign_generic_err_to_response(response, REDIS_SYNTAX_ERROR);
+      return;
+    }
+  }
   Uint32 arg_index_start = (redis_key_id == STRING_REDIS_KEY_ID) ? 1 : 2;
-  Uint32 num_keys = argv.size() - arg_index_start;
+  Uint32 num_keys = (redis_key_id == STRING_REDIS_KEY_ID) ?
+                        2 : argv.size() - arg_index_start;
   assert((num_keys & 1) == 0);
   assert(num_keys > 0);
   num_keys = num_keys / 2;
@@ -973,6 +1016,7 @@ void rondb_mset(Ndb *ndb,
     key_storage[i].m_rec_attr_prev_num_rows = nullptr;
     key_storage[i].m_rec_attr_rondb_key = nullptr;
     key_storage[i].m_key_state = KeyState::NotCompleted;
+    generate_expire_at(&(key_storage[i].m_expire_at), ttl);
   }
   if (!setup_metadata(ndb,
                       response,
