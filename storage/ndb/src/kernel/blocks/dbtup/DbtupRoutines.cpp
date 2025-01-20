@@ -2186,7 +2186,6 @@ int Dbtup::updateAttributes(KeyReqStruct *req_struct,
       }
     } else if (attributeId == AttributeHeader::ROW_GCI64) {
       thrjam(req_struct->jamBuffer);
-      Uint32 sz = ahIn.getDataSize();
       ndbrequire(sz == 2);
       Uint32 attrId = regTabPtr->getExtraAttrId<Tablerec::TR_ExtraRowGCIBits>();
       Uint32 gciLo = *(inBuffer + inBufIndex + 1);
@@ -2212,8 +2211,6 @@ int Dbtup::updateAttributes(KeyReqStruct *req_struct,
         }
       }
 
-      inBufIndex += 1 + sz;
-      req_struct->in_buf_index = inBufIndex;
     } else {
       thrjam(req_struct->jamBuffer);
       thrjamDataDebug(req_struct->jamBuffer, attributeId);
