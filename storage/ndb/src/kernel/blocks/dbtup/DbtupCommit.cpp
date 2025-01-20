@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2003, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -430,6 +430,24 @@ void Dbtup::dealloc_tuple(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
       Tuple_header *copy= get_copy_tuple(&regOperPtr->m_copy_tuple_location);
       Local_key key;
       memcpy(&key, copy->get_disk_ref_ptr(regTabPtr), sizeof(key));
+      {
+        /**
+         * We need to release the BUSY state on the page, otherwise
+         * the page is eternally blocked from proceeding with LCP
+         * and we will get a LCP stop eventually.
+         */
+        Page_cache_client::Request req;
+        Page_cache_client pgman(this, c_pgman);
+        memcpy(&req.m_page, &key, sizeof(Local_key));
+        req.m_table_id = regFragPtr->fragTableId;
+        req.m_fragment_id = regFragPtr->fragmentId;
+        req.m_callback.m_callbackData = RNIL; // Not used
+        req.m_callback.m_callbackFunction= 
+          safe_cast(&Dbtup::deref_disk_page_callback);
+        Uint32 flags = Page_cache_client::DEREF_REQ;
+        int res = pgman.get_page(signal, req, flags);
+        ndbrequire(res > 0);
+      }
       ndbrequire(regOperPtr->m_disk_extra_callback_page == pagePtr.i);
       PagePtr diskPagePtr((Tup_page*)pagePtr.p, pagePtr.i);
       ndbrequire(diskPagePtr.p->m_restart_seq == globalData.m_restart_seq);
@@ -1513,6 +1531,10 @@ void Dbtup::disk_page_log_buffer_callback(Signal *signal, Uint32 opPtrI,
                      &transId1,
                      &transId2);
   Uint32 page = regOperPtr.p->m_disk_callback_page;
+  if (regOperPtr.p->m_disk_extra_callback_page != RNIL) {
+    jam();
+    page = regOperPtr.p->m_disk_extra_callback_page;
+  }
   prepare_oper_ptr = regOperPtr;
 
   TupCommitReq *const tupCommitReq = (TupCommitReq *)signal->getDataPtr();
@@ -2251,7 +2273,6 @@ Uint32 Dbtup::exec_tup_commit(Signal *signal) {
   req_struct.trans_id1 = transId1;
   req_struct.trans_id2 = transId2;
   req_struct.m_reorg = regOperPtr.p->op_struct.bit_field.m_reorg;
-  regOperPtr.p->m_disk_callback_page = tupCommitReq.diskpage;
 
   ptrCheckGuard(regTabPtr, no_of_tablerec, tablerec);
   PagePtr tupPagePtr;
@@ -2268,6 +2289,8 @@ Uint32 Dbtup::exec_tup_commit(Signal *signal) {
     diskPagePtr.p = 0;
     req_struct.m_disk_page_ptr.i = RNIL;
     req_struct.m_disk_page_ptr.p = 0;
+    regOperPtr.p->m_disk_callback_page = RNIL;
+    regOperPtr.p->m_disk_extra_callback_page = RNIL;
   } else {
     jamDebug();
     ndbrequire(m_global_page_pool.getPtr(diskPagePtr, diskPagePtr.i));

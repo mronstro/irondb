@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2004, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2021, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2021, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -360,7 +360,7 @@ ErrorBundle ErrorCodes[] = {
   { 243,  DMEC, OL, "Rate limit reached and queues are overloaded for database" },
   { 247,  DMEC, OL, "Too many operations in a transaction in database" },
   { 248,  DMEC, OL, "Too many concurrent transactions in database" },
-  { 928,  DMEC, OL, "Disk quota reached for database, delete data before write again" },
+  { 929,  DMEC, OL, "Disk quota reached for database, delete data before write again" },
   { 243,  DMEC, OL, "Rate limit reached and queues are overloaded for database" },
   { 701,  HA_ERR_LOCK_WAIT_TIMEOUT, TO, "System busy with other schema operation" },
   { 711,  HA_ERR_LOCK_WAIT_TIMEOUT, NR, "System busy with node restart, schema operations not allowed" },
@@ -638,6 +638,7 @@ ErrorBundle ErrorCodes[] = {
   { 919,  DMEC, TR, "Cannot execute index stats update" },
   { 930,  DMEC, TR, "Cannot prepare index stats update, out of prepare records" },
   { 931,  DMEC, TR, "Cannot prepare index stats update, out of prepare pages" },
+  { 932,  DMEC, IE, "Failed to get disk page" },
   { 1224, HA_WRONG_CREATE_OPTION, SE, "Too many fragments" },
   { 1225, DMEC, SE, "Table not defined in local query handler" },
   { 1226, HA_ERR_NO_SUCH_TABLE, SE, "Table is being dropped" },

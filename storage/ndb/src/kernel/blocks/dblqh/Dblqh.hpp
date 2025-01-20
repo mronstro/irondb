@@ -385,6 +385,7 @@ class FsReadWriteReq;
 #define ZNO_SUCH_FRAGMENT_ID 1235
 #define ZKEYINFO_NOT_COMPLETED_BEFORE_ATTRINFO 1236
 #define ZLQHKEY_PROTOCOL_ERROR 1237
+#define ZDISK_GET_PAGE_ERROR 932
 
 /* ------------------------------------------------------------------------- */
 /*       ERROR CODES ADDED IN VERSION 2.X                                    */

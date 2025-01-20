@@ -6024,11 +6024,11 @@ void Dblqh::execTUPKEYCONF(Signal *signal) {
     {
       Uint32 activeCreat = regTcPtr.p->activeCreat;
       jam();
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       // Abort was not ready to start until this signal came back. Now we are
       // ready to start the abort.
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       if (unlikely(activeCreat == Fragrecord::AC_NR_COPY)) {
         jam();
@@ -11660,19 +11660,12 @@ Dblqh::acckeyconf_load_diskpage(Signal* signal,
     regTcPtr.p->m_row_id.m_page_no = lkey1;
     regTcPtr.p->m_row_id.m_page_idx = lkey2;
   } else {
-    jamDebug();
+    jam();
     regTcPtr.p->transactionState = TcConnectionrec::WAIT_TUP;
     TupKeyRef *ref = (TupKeyRef *)signal->getDataPtr();
     ref->userRef = regTcPtr.i;
-    if (res == -1) {
-      jam();
-      DEB_COPY(("(%u)get_page returned with -1", instance()));
-      ref->errorCode = ~0;
-    } else {
-      jam();
-      ref->errorCode = -res;
-      DEB_COPY(("(%u)get_page returned with %d", instance(), -res));
-    }
+    DEB_COPY(("(%u)get_page returned with -1", instance()));
+    ref->errorCode = ZDISK_GET_PAGE_ERROR;
     execTUPKEYREF(signal);
     return;
   }
@@ -11711,7 +11704,7 @@ Dblqh::acckeyconf_load_diskpage_callback(Signal* signal,
     ndbrequire(state == TcConnectionrec::WAIT_TUP_TO_ABORT);
     TupKeyRef * ref = (TupKeyRef *)signal->getDataPtr();
     ref->userRef= callbackData;
-    ref->errorCode= page_id;
+    ref->errorCode= page_id; /* Transaction already aborted, not used */
     execTUPKEYREF(signal);
   }
   else
@@ -11719,7 +11712,7 @@ Dblqh::acckeyconf_load_diskpage_callback(Signal* signal,
     jam();
     TupKeyRef * ref = (TupKeyRef *)signal->getDataPtr();
     ref->userRef= callbackData;
-    ref->errorCode= page_id;
+    ref->errorCode = ZDISK_GET_PAGE_ERROR;
     execTUPKEYREF(signal);
   }
   release_frag_access(fragptr.p);
@@ -14869,7 +14862,7 @@ void Dblqh::abortStateHandlerLab(Signal* signal,
   switch (regTcPtr->transactionState) {
     case TcConnectionrec::PREPARED:
       jam();
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       /*THE OPERATION IS ALREADY PREPARED AND SENT TO THE NEXT LQH OR BACK TO
        * TC.  */
@@ -14877,7 +14870,7 @@ void Dblqh::abortStateHandlerLab(Signal* signal,
       /*IF IT WAS A CHECK FOR TRANSACTION STATUS THEN WE REPORT THE STATUS TO
        * THE  */
       /*NEW TC AND CONTINUE WITH THE NEXT OPERATION IN LQH. */
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       if (regTcPtr->abortState == TcConnectionrec::NEW_FROM_TC) {
         jam();
@@ -14888,7 +14881,7 @@ void Dblqh::abortStateHandlerLab(Signal* signal,
     case TcConnectionrec::LOG_COMMIT_WRITTEN_WAIT_SIGNAL:
     case TcConnectionrec::LOG_COMMIT_QUEUED_WAIT_SIGNAL:
       jam();
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       // We can only reach these states for multi-updates on a record in a
       // transaction.
@@ -14898,19 +14891,19 @@ void Dblqh::abortStateHandlerLab(Signal* signal,
       //
       // We cannot arrive here for calls from execABORTREQ or execABORT since
       // the dirty writes are not REDO logged.
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       ndbrequire(regTcPtr->abortState == TcConnectionrec::NEW_FROM_TC);
       sendLqhTransconf(signal, LqhTransConf::Prepared, tcConnectptr);
       return;
     case TcConnectionrec::WAIT_TUP:
       jam();
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       // TUP is currently active. We have to wait for the TUPKEYREF or
       // TUPKEYCONF to arrive since we might otherwise jeopardise the local
       // checkpoint consistency in overload situations.
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       regTcPtr->transactionState = TcConnectionrec::WAIT_TUP_TO_ABORT;
       DEB_COPY(
@@ -14954,83 +14947,83 @@ void Dblqh::abortStateHandlerLab(Signal* signal,
     case TcConnectionrec::WAIT_ACC_ABORT:
 
       jam();
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       /*ABORT IS ALREADY ONGOING DUE TO SOME ERROR. WE HAVE ALREADY SET THE
        * STATE  */
       /*OF THE ABORT SO THAT WE KNOW THAT TC EXPECTS A REPORT. WE CAN THUS
        * SIMPLY  */
       /*EXIT AND WAIT FOR THE ABORT TO COMPLETE. */
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       return;
     case TcConnectionrec::WAIT_TUP_COMMIT:
     case TcConnectionrec::LOG_COMMIT_QUEUED:
       jam();
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       /*THIS IS ONLY AN ALLOWED STATE IF A DIRTY WRITE OR SIMPLE READ IS
        * PERFORMED.*/
       /*IF WE ARE MERELY CHECKING THE TRANSACTION STATE IT IS ALSO AN ALLOWED
        * STATE*/
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       if (regTcPtr->dirtyOp == ZTRUE) {
         jam();
-        /* -------------------------------------------------------------------------
+        /* ---------------------------------------------------------------------
          */
         /*COMPLETE THE DIRTY WRITE AND THEN REPORT COMPLETED BACK TO TC. SINCE
          * IT IS */
         /*A DIRTY WRITE IT IS ALLOWED TO COMMIT EVEN IF THE TRANSACTION ABORTS.
          */
-        /* -------------------------------------------------------------------------
+        /* ---------------------------------------------------------------------
          */
         return;
       }  // if
       if (regTcPtr->opSimple) {
         jam();
-        /* -------------------------------------------------------------------------
+        /* ---------------------------------------------------------------------
          */
         /*A SIMPLE READ IS CURRENTLY RELEASING THE LOCKS OR WAITING FOR ACCESS
          * TO    */
         /*ACC TO CLEAR THE LOCKS. COMPLETE THIS PROCESS AND THEN RETURN AS
          * NORMAL.   */
         /*NO DATA HAS CHANGED DUE TO THIS SIMPLE READ ANYWAY. */
-        /* -------------------------------------------------------------------------
+        /* ---------------------------------------------------------------------
          */
         return;
       }  // if
       ndbrequire(regTcPtr->abortState == TcConnectionrec::NEW_FROM_TC);
       jam();
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       /*WE ARE ONLY CHECKING THE STATUS OF THE TRANSACTION. IT IS COMMITTING. */
       /*COMPLETE THE COMMIT LOCALLY AND THEN SEND REPORT OF COMMITTED TO THE NEW
        * TC*/
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       sendLqhTransconf(signal, LqhTransConf::Committed, tcConnectptr);
       return;
     case TcConnectionrec::COMMITTED:
       jam();
       ndbrequire(regTcPtr->abortState == TcConnectionrec::NEW_FROM_TC);
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       /*WE ARE CHECKING TRANSACTION STATUS. REPORT COMMITTED AND CONTINUE WITH
        * THE */
       /*NEXT OPERATION. */
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       sendLqhTransconf(signal, LqhTransConf::Committed, tcConnectptr);
       return;
     default:
       ndbabort();
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
       /*THE STATE WAS NOT AN ALLOWED STATE ON A NORMAL OPERATION. SCANS AND COPY
        */
       /*FRAGMENT OPERATIONS SHOULD HAVE EXECUTED IN ANOTHER PATH. */
-      /* -------------------------------------------------------------------------
+      /* -----------------------------------------------------------------------
        */
   }  // switch
   abortCommonLab(signal, tcConnectptr);

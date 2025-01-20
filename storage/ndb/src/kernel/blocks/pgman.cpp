@@ -1,6 +1,6 @@
 /*
    Copyright (c) 2005, 2024, Oracle and/or its affiliates.
-   Copyright (c) 2020, 2024, Hopsworks and/or its affiliates.
+   Copyright (c) 2020, 2025, Hopsworks and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -3602,13 +3602,14 @@ int Pgman::get_page_no_lirs(EmulatedJamBuffer *jamBuf, Signal *signal,
      * success. Cannot be combined with any other flag.
      */
     thrjam(jamBuf);
+    Page_state state = ptr.p->m_state;
+    ndbrequire(state & Page_entry::BUSY);
     ndbrequire(req_flags == Page_request::DEREF_REQ);
     ndbrequire(ptr.p->m_busy_count > 0);
     ptr.p->m_busy_count--;
     if (ptr.p->m_busy_count == 0)
     {
       thrjam(jamBuf);
-      Page_state state = ptr.p->m_state;
       state &= ~ Page_entry::BUSY;
       bool busy_lcp = false;
       if (state & Page_entry::WAIT_LCP)
@@ -4050,7 +4051,7 @@ void Pgman::update_lsn(Signal *signal, EmulatedJamBuffer *jamBuf,
 
   state |= Page_entry::DIRTY;
   if (!(state & Pgman::Page_entry::LOCKED)) {
-    jam();
+    thrjam(jamBuf);
     /* No need for the D_HEADER if DIRTY is set */
     state &= ~ Page_entry::D_HEADER;
     insert_fragment_dirty_list(ptr, state, jamBuf);
@@ -4058,7 +4059,7 @@ void Pgman::update_lsn(Signal *signal, EmulatedJamBuffer *jamBuf,
   set_page_state(jamBuf, ptr, state);
 
   if (busy_lcp) {
-    jam();
+    thrjam(jamBuf);
     /**
      * Should only happen in LDM threads, not in proxy since proxy
      * block only handles LOCKED pages. This is signalled through
