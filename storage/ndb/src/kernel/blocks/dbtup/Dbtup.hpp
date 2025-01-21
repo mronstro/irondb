@@ -4638,6 +4638,8 @@ Dbtup::get_dd_info(PagePtr* pagePtr,
 
   if ((regTabPtr->m_bits & Tablerec::TR_UseVarSizedDiskData) != 0)
   {
+    jamDebug();
+    jamDataDebug(((Var_page*)tmp.p)->get_high_index());
     len = ((Var_page*)tmp.p)->get_entry_len(key.m_page_idx);
     return ((Var_page*)tmp.p)->get_ptr(key.m_page_idx);
   }

@@ -3908,6 +3908,7 @@ int Dbtup::handleDeleteReq(Signal* signal,
       const Uint32 *disk_ref = dst->get_disk_ref_ptr(regTabPtr);
       memcpy(&key, disk_ref, sizeof(key));
       key.m_page_no= req_struct->m_disk_page_ptr.i;
+      jamData(key.m_page_idx);
       ndbrequire(key.m_page_idx < Tup_page::DATA_WORDS);
       Uint32 disk_len = 0;
       Uint32 *src_ptr = get_dd_info(&req_struct->m_disk_page_ptr,
