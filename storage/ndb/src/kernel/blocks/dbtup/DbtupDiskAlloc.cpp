@@ -2588,10 +2588,12 @@ void Dbtup::disk_restart_undo(Signal *signal, Uint64 lsn, Uint32 type,
     preq.m_callback.m_callbackData = cur_undo_record_page.i;
   }
 
-  DEB_DISK(("(%u) UNDO_REQ on disk_row(%u,%u)",
+  DEB_DISK(("(%u) UNDO_REQ of type %u on disk_row(%u,%u,%u)",
     instance(),
+    f_undo.m_type,
     preq.m_page.m_file_no,
-    preq.m_page.m_page_no));
+    preq.m_page.m_page_no,
+    preq.m_page.m_page_idx));
 
   int flags = Page_cache_client::UNDO_REQ;
   Page_cache_client pgman(this, c_pgman);
@@ -3170,6 +3172,10 @@ void Dbtup::disk_restart_undo_alloc(Apply_undo *undo) {
   else
   {
     ((Var_page*)undo->m_page_ptr.p)->free_record(undo->m_key.m_page_idx, 0);
+    DEB_DISK(("(%u) free(%u), new high_index: %u",
+      instance(),
+      undo->m_key.m_page_idx,
+      ((Var_page*)undo->m_page_ptr.p)->get_high_index()));
   }
 }
 
@@ -3200,6 +3206,10 @@ Dbtup::prepare_undo_varpage(Var_page* page_ptr,
      */
     page_ptr->free_record(idx, 0);
     Uint32 new_idx = page_ptr->alloc_record(idx, len, (Var_page*)ctemp_page);
+    DEB_DISK(("(%u) free+alloc_record(%u), new high_index: %u",
+      instance(),
+      idx,
+      page_ptr->get_high_index()));
     ndbrequire(new_idx == idx);
   }
   return page_ptr->get_ptr(idx);
@@ -3432,6 +3442,11 @@ Dbtup::disk_restart_undo_free(Apply_undo* undo,
     Uint32 new_idx= page_ptr->alloc_record(idx,
                                            alloc_len,
                                            (Var_page*)ctemp_page);
+    DEB_DISK(("(%u) alloc_record(%u), new high_index: %u",
+      instance(),
+      idx,
+      page_ptr->get_high_index()));
+
     ndbrequire(new_idx == idx);
     ptr = page_ptr->get_ptr(idx);
   }
