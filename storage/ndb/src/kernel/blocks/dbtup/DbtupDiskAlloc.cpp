@@ -36,8 +36,9 @@
 //#define DEBUG_REORG 1
 //#define DEBUG_UNDO_SPLIT 1
 //#define DEBUG_LCP 1
-//#define DEBUG_PGMAN_IO 1
-//#define DEBUG_PGMAN 1
+#define DEBUG_PGMAN_IO 1
+#define DEBUG_PGMAN 1
+#define DEBUG_DISK 1
 //#define DEBUG_EXTENT_BITS 1
 //#define DEBUG_EXTENT_BITS_HASH 1
 //#define DEBUG_FREE_EXTENT 1
@@ -45,6 +46,12 @@
 //#define DEBUG_UNDO_LCP 1
 //#define DEBUG_UNDO_ALLOC 1
 //#define DEBUG_FREE_SPACE 1
+#endif
+
+#ifdef DEBUG_DISK
+#define DEB_DISK(arglist) do { g_eventLogger->info arglist ; } while (0)
+#else
+#define DEB_DISK(arglist) do { } while (0)
 #endif
 
 #ifdef DEBUG_REORG
@@ -1000,7 +1007,8 @@ Dbtup::disk_page_prealloc(Signal* signal,
 
   Uint32 new_size = size - sz;  // Subtract alloc rec
   Uint32 newPageBits = alloc.calc_page_free_bits(new_size);
-  ndbrequire(newPageBits != (Uint32)pageBits) {
+  ndbrequire(newPageBits != (Uint32)pageBits);
+  {
     jam();
     /**
      * We should always enter this path. When the new page was empty
@@ -1061,8 +1069,8 @@ Dbtup::disk_page_prealloc(Signal* signal,
     if (ext.p->m_first_page_no + ext.p->m_empty_page_no == key->m_page_no) {
       jam();
       ext.p->m_empty_page_no++;
-      DEB_EXTENT_BITS(("(%u)extent(%u) new page in tab(%u,%u), first_page(%u,%u)"
-                       " empty_page: %u",
+      DEB_EXTENT_BITS(("(%u)extent(%u) new page in tab(%u,%u),"
+                       " first_disk_row(%u,%u) empty_page: %u",
                 instance(),
                 ext.p->m_extent_no,
                 fragPtr.p->fragTableId,
@@ -1073,7 +1081,7 @@ Dbtup::disk_page_prealloc(Signal* signal,
     }
     else
     {
-      DEB_EXTENT_BITS(("(%u)extent(%u) new page in tab(%u,%u), page(%u,%u)",
+      DEB_EXTENT_BITS(("(%u)extent(%u) new page in tab(%u,%u), disk_row(%u,%u)",
                 instance(),
                 ext.p->m_extent_no,
                 fragPtr.p->fragTableId,
@@ -1450,7 +1458,7 @@ void Dbtup::disk_page_prealloc_initial_callback(Signal *signal,
   }
   Page_cache_client pgman(this, c_pgman);
   pgman.set_lsn(req.p->m_key, lsn);
-  DEB_PGMAN_IO(("(%u) Get empty page (%u,%u) set LSN: %llu"
+  DEB_PGMAN_IO(("(%u) Get empty page disk_row(%u,%u) set LSN: %llu"
                 ", used: %u, free: %u, idx: %u",
                 instance(),
                 req.p->m_key.m_file_no,
@@ -1656,6 +1664,11 @@ Dbtup::disk_page_dirty_header(Signal *signal,
     safe_cast(&Dbtup::disk_page_dirty_header_callback);
   Uint32 flags = Page_cache_client::DIRTY_HEADER;
 
+  DEB_DISK(("(%u) Set DIRTY_HEADER on disk_row(%u,%u)",
+    instance(),
+    key.m_file_no,
+    key.m_page_no));
+
   Page_cache_client pgman(this, c_pgman);
   int res= pgman.get_page(signal, preq, flags);
   jamEntry();
@@ -1705,7 +1718,7 @@ Dbtup::disk_page_unmap_callback(Uint32 when,
   ndbrequire(fragPtr.i != RNIL64);
 
   DEB_PGMAN_IO(
-      ("(%u)unmap page: tab(%u,%u), page(%u,%u):%u,"
+      ("(%u)unmap page: tab(%u,%u), disk_row(%u,%u):%u,"
        " lsn(%u,%u),when:%u,dirty:%u, ptr.i : %u",
        instance(), pagePtr.p->m_table_id, pagePtr.p->m_fragment_id,
        pagePtr.p->m_file_no, pagePtr.p->m_page_no, pagePtr.i,
@@ -1912,8 +1925,9 @@ Dbtup::disk_page_alloc(Signal* signal,
                               undo_size);
   }
   DEB_PGMAN((
-    "(%u)disk_page_alloc: tab(%u,%u):%u,page(%u,%u).%u.%u,gci: %u,"
-    "row_id(%u,%u), lsn=%llu, alloc_size: %u, free: %u, used: %u",
+    "(%u)disk_page_alloc: tab(%u,%u):%u,disk_row(%u,%u,%u).%u,gci: %u,"
+    " row_id(%u,%u), lsn=%llu, alloc_size: %u, free: %u, used: %u"
+    ", new high_index: %u",
               instance(),
               pagePtr.p->m_table_id,
               pagePtr.p->m_fragment_id,
@@ -1928,7 +1942,8 @@ Dbtup::disk_page_alloc(Signal* signal,
               lsn,
               undo_size,
               pagePtr.p->free_space,
-              pagePtr.p->uncommitted_used_space));
+              pagePtr.p->uncommitted_used_space,
+              ((Tup_varsize_page*)pagePtr.p)->get_high_index()));
 }
 
 void
@@ -1952,6 +1967,7 @@ Dbtup::disk_page_free(Signal *signal,
 
   Uint32 sz;
   Uint64 lsn;
+  Uint32 new_undo_len = 0;
   if ((tabPtrP->m_bits & Tablerec::TR_UseVarSizedDiskData) == 0)
   {
     jamDebug();
@@ -1984,7 +2000,7 @@ Dbtup::disk_page_free(Signal *signal,
     const Uint32 *src = ((Var_page*)pagePtr.p)->get_ptr(page_idx);
     sz = ((Var_page*)pagePtr.p)->get_entry_len(page_idx);
     Uint32 size_len = (sizeof(Dbtup::Disk_undo::Update_Free) >> 2);
-    Uint32 new_undo_len = size_len + (sz - 1);
+    new_undo_len = size_len + (sz - 1);
     jamDataDebug(new_undo_len);
     jamDataDebug(undo_len);
     DEB_REORG(("(%u)REORG: tab(%u,%u), row_id(%u,%u), key(%u,%u,%u)"
@@ -2025,8 +2041,8 @@ Dbtup::disk_page_free(Signal *signal,
     ((Var_page*)pagePtr.p)->free_record(page_idx, 0);
   }
   DEB_PGMAN((
-    "(%u)disk_page_free:tab(%u,%u):%u,page(%u,%u).%u.%u,gci:%u,row(%u,%u)"
-    ", lsn=%llu, new_undo_len: %u, undo_len: %u",
+    "(%u)disk_page_free:tab(%u,%u):%u,disk_row(%u,%u,%u).%u,gci:%u,row(%u,%u)"
+    ", lsn=%llu, new_undo_len: %u, undo_len: %u, new high_index: %u",
              instance(),
              fragPtrP->fragTableId,
              fragPtrP->fragmentId,
@@ -2040,7 +2056,8 @@ Dbtup::disk_page_free(Signal *signal,
              row_id->m_page_idx,
              lsn,
              new_undo_len,
-             undo_len));
+             undo_len,
+             ((Tup_varsize_page*)pagePtr.p)->get_high_index()));
 
 
   /**
@@ -2101,6 +2118,11 @@ void Dbtup::disk_page_abort_prealloc(Signal *signal, Fragrecord *fragPtrP,
   memcpy(&req.m_page, key, sizeof(Local_key));
   req.m_table_id = fragPtrP->fragTableId;
   req.m_fragment_id = fragPtrP->fragmentId;
+
+  DEB_DISK(("(%u) ABORT_REQ on disk_row(%u,%u)",
+    instance(),
+    key->m_file_no,
+    key->m_page_no));
 
   Page_cache_client pgman(this, c_pgman);
   int res = pgman.get_page(signal, req, flags);
@@ -2565,6 +2587,11 @@ void Dbtup::disk_restart_undo(Signal *signal, Uint64 lsn, Uint32 type,
     ndbrequire(c_pending_undo_page_pool.seize(cur_undo_record_page));
     preq.m_callback.m_callbackData = cur_undo_record_page.i;
   }
+
+  DEB_DISK(("(%u) UNDO_REQ on disk_row(%u,%u)",
+    instance(),
+    preq.m_page.m_file_no,
+    preq.m_page.m_page_no));
 
   int flags = Page_cache_client::UNDO_REQ;
   Page_cache_client pgman(this, c_pgman);

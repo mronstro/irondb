@@ -62,7 +62,7 @@
 //#define DEBUG_DELETE_NR 1
 //#define DEBUG_LCP_LGMAN 1
 //#define DEBUG_LCP_SKIP_DELETE 1
-//#define DEBUG_DISK 1
+#define DEBUG_DISK 1
 //#define DEBUG_ELEM_COUNT 1
 #endif
 
@@ -787,6 +787,13 @@ Dbtup::load_diskpage(Signal* signal,
     req.m_callback.m_callbackFunction =
         safe_cast(&Dbtup::disk_page_load_callback);
 
+    DEB_DISK(("(%u), load_diskpage, row(%u,%u), disk_row(%u,%u,%u)",
+      instance(),
+      frag_page_id,
+      page_idx,
+      req.m_page.m_file_no,
+      req.m_page.m_page_no,
+      req.m_page.m_page_idx));
 #ifdef ERROR_INSERT
     if (ERROR_INSERTED(4022)) {
       flags |= Page_cache_client::DELAY_REQ;
@@ -878,6 +885,20 @@ Dbtup::load_extra_diskpage(Signal *signal, Uint32 opRec, Uint32 flags)
   req.m_callback.m_callbackFunction= 
     safe_cast(&Dbtup::disk_page_load_extra_callback);
 
+#ifdef DEBUG_DISK
+  PagePtr deb_page_ptr;
+  Uint32 *deb_tmp = get_ptr(&deb_page_ptr,
+                            &operPtr.p->m_tuple_location,
+                            regTabPtr);
+  (void)deb_tmp;
+  DEB_DISK(("(%u), load_diskpage, row(%u,%u), disk_row(%u,%u,%u)",
+    instance(),
+    ((Tup_varsize_page*)deb_page_ptr.p)->frag_page_id,
+    operPtr.p->m_tuple_location.m_page_idx,
+    req.m_page.m_file_no,
+    req.m_page.m_page_no,
+    req.m_page.m_page_idx));
+#endif
   Page_cache_client pgman(this, c_pgman);
   int res = pgman.get_page(signal, req, flags);
   if (res != 0)
@@ -934,6 +955,15 @@ Dbtup::disk_page_load_callback(Signal* signal, Uint32 opRec, Uint32 page_id)
   operPtr.i = opRec;
   jamData(opRec);
   ndbrequire(m_curr_tup->c_operation_pool.getValidPtr(operPtr));
+#ifdef DEBUG_DISK
+  Ptr<GlobalPage> diskPagePtr;
+  diskPagePtr.i = page_id;
+  ndbrequire(m_global_page_pool.getPtr(diskPagePtr, page_id));
+  g_eventLogger->info("(%u) disk_page_load_callback, disk_row(%u,%u)",
+    instance(),
+    ((Tup_varsize_page*)diskPagePtr.p)->m_file_no,
+    ((Tup_varsize_page*)diskPagePtr.p)->m_page_no);
+#endif
   if (operPtr.p->op_struct.bit_field.m_load_extra_diskpage_on_commit)
   {
     jam();
@@ -984,6 +1014,15 @@ Dbtup::disk_page_load_extra_callback(Signal* signal,
   jam();
   jamData(opRec);
   ndbrequire(m_curr_tup->c_operation_pool.getValidPtr(operPtr));
+#ifdef DEBUG_DISK
+  Ptr<GlobalPage> diskPagePtr;
+  diskPagePtr.i = extra_page_id;
+  ndbrequire(m_global_page_pool.getPtr(diskPagePtr, extra_page_id));
+  g_eventLogger->info("(%u) disk_page_load_extra_callback, disk_row(%u,%u)",
+    instance(),
+    ((Tup_varsize_page*)diskPagePtr.p)->m_file_no,
+    ((Tup_varsize_page*)diskPagePtr.p)->m_page_no);
+#endif
   operPtr.p->m_disk_extra_callback_page = extra_page_id;
   Uint32 page_id = operPtr.p->m_disk_callback_page;
   c_lqh->setup_key_pointers(operPtr.p->userpointer);
@@ -6887,14 +6926,16 @@ Dbtup::expand_tuple(KeyReqStruct* req_struct,
          */
         const Uint32 *disk_ref= src->get_disk_ref_ptr(tabPtrP);
         memcpy(&key, disk_ref, sizeof(key));
+        jamDataDebug(key.m_file_no);
+        jamDataDebug(key.m_page_no);
         key.m_page_no= req_struct->m_disk_page_ptr.i;
         ndbrequire(key.m_page_idx < Tup_page::DATA_WORDS);
+        jamDataDebug(key.m_page_idx);
+        jamDataDebug(src_len);
         src_ptr= get_dd_info(&req_struct->m_disk_page_ptr,
             key,
             tabPtrP,
             src_len);
-        jamDataDebug(key.m_page_idx);
-        jamDataDebug(src_len);
         DEB_DISK(("(%u) disk_row(%u,%u), src_ptr: %p, src_len: %u",
               instance(),
               key.m_page_no,
@@ -8628,7 +8669,14 @@ Dbtup::nr_delete(Signal* signal, Uint32 senderData,
     preq.m_callback.m_callbackFunction =
       safe_cast(&Dbtup::nr_delete_page_callback);
     int flags = Page_cache_client::COMMIT_REQ;
-    
+
+    DEB_DISK(("(%u), nr_delete, row(%u,%u), disk_row(%u,%u,%u)",
+      instance(),
+      key->m_page_no,
+      key->m_page_idx,
+      preq.m_page.m_file_no,
+      preq.m_page.m_page_no,
+      preq.m_page.m_page_idx));
 #ifdef ERROR_INSERT
       if (ERROR_INSERTED(4023) || ERROR_INSERTED(4024)) {
         int rnd = rand() % 100;
@@ -8727,6 +8775,16 @@ void Dbtup::nr_delete_page_callback(Signal *signal, Uint32 userpointer,
   op.m_disk_ref.m_page_no = pagePtr.p->m_page_no;
   op.m_disk_ref.m_file_no = pagePtr.p->m_file_no;
   c_lqh->get_nr_op_info(&op, page_id);
+
+#ifdef DEBUG_DISK
+  Ptr<GlobalPage> diskPagePtr;
+  diskPagePtr.i = page_id;
+  ndbrequire(m_global_page_pool.getPtr(diskPagePtr, page_id));
+  g_eventLogger->info("(%u) nr_delete_page_callback, disk_row(%u,%u)",
+    instance(),
+    ((Tup_varsize_page*)diskPagePtr.p)->m_file_no,
+    ((Tup_varsize_page*)diskPagePtr.p)->m_page_no);
+#endif
 
   FragrecordPtr fragPtr;
   fragPtr.i= op.m_tup_frag_ptr_i;

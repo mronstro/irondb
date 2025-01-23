@@ -39,7 +39,7 @@
 
 #if (defined(VM_TRACE) || defined(ERROR_INSERT))
 //#define DEBUG_REORG 1
-//#define DEBUG_DISK 1
+#define DEBUG_DISK 1
 //#define DEBUG_LCP 1
 //#define DEBUG_LCP_SKIP_DELETE_EXTRA 1
 //#define DEBUG_INSERT_EXTRA 1
@@ -492,6 +492,14 @@ void Dbtup::dealloc_tuple(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
       rowid.m_page_no = page->frag_page_id;
       tmpptr.i = pagePtr.i;
       tmpptr.p = reinterpret_cast<Page *>(pagePtr.p);
+      DEB_DISK(("(%u) DELETE disk_row(%u,%u,%u) row(%u,%u), high_index: %u",
+        instance(),
+        disk.m_file_no,
+        disk.m_page_no,
+        disk.m_page_idx,
+        rowid.m_page_no,
+        rowid.m_page_idx,
+        ((Tup_varsize_page*)tmpptr.p)->get_high_index()));
       disk_page_free(signal, regTabPtr, regFragPtr, &disk, tmpptr, gci_hi,
                      &rowid, regOperPtr->m_undo_buffer_space);
     } else {
@@ -958,6 +966,8 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
     }
     Uint32 disk_len = disk_fix_header_size + disk_varlen;
 
+    Local_key rowid = regOperPtr->m_tuple_location;
+    rowid.m_page_no = pagePtr.p->frag_page_id;
     if (bits & Tuple_header::DISK_REORG)
     {
       /**
@@ -976,8 +986,6 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
        */
       jam();
       ndbrequire(!(copy_bits & Tuple_header::DISK_ALLOC));
-      Local_key rowid = regOperPtr->m_tuple_location;
-      rowid.m_page_no = pagePtr.p->frag_page_id;
       jamDebug();
       Ptr<GlobalPage> pagePtr;
       ndbrequire(m_global_page_pool.getPtr(pagePtr,
@@ -994,14 +1002,16 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
                      &rowid,
                      regOperPtr->m_undo_buffer_space);
       DEB_DISK(("(%u) Commit free old disk part for row(%u,%u)"
-                " disk_row(%u,%u).%u, uncommitted_used_space: %u",
+                " disk_row(%u,%u,%u), uncommitted_used_space: %u"
+                ", high_index: %u",
                  instance(),
                  rowid.m_page_no,
                  rowid.m_page_idx,
                  old_disk_key.m_file_no,
                  old_disk_key.m_page_no,
                  old_disk_key.m_page_idx,
-                 diskPagePtr.p->uncommitted_used_space));
+                 diskPagePtr.p->uncommitted_used_space,
+                 ((Tup_varsize_page*)diskPagePtr.p)->get_high_index()));
 
       /**
        * After freeing the row we now turn to the new row that should be
@@ -1033,15 +1043,17 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
                       &rowid,
                       alloc_size,
                       decrement);
-      DEB_DISK(("(%u) Commit new disk part for row(%u,%u) disk_row(%u,%u).%u"
-                ", uncommitted_used_space: %u",
+      DEB_DISK(("(%u) Commit new disk part for row(%u,%u) disk_row(%u,%u,%u)"
+                ", uncommitted_used_space: %u, high_index: %u",
                  instance(),
                  rowid.m_page_no,
                  rowid.m_page_idx,
                  key.m_file_no,
                  key.m_page_no,
                  key.m_page_idx,
-                 diskPagePtr.p->uncommitted_used_space));
+                 diskPagePtr.p->uncommitted_used_space,
+                 ((Tup_varsize_page*)diskPagePtr.p)->get_high_index()));
+
       dst = get_disk_reference(regTabPtr,
                                diskPagePtr,
                                key,
@@ -1067,8 +1079,6 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
           key.m_page_idx = disk_len;
         }
       }
-      Local_key rowid = regOperPtr->m_tuple_location;
-      rowid.m_page_no = pagePtr.p->frag_page_id;
       disk_page_alloc(signal,
                       regTabPtr,
                       regFragPtr,
@@ -1082,8 +1092,8 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
                                diskPagePtr,
                                key,
                                sz);
-      DEB_DISK(("(%u) Commit disk insert for row(%u,%u) disk_row(%u,%u).%u,"
-                " dst: %p, sz: %u, uncommitted_used_space: %u",
+      DEB_DISK(("(%u) Commit disk insert for row(%u,%u) disk_row(%u,%u,%u),"
+                " dst: %p, sz: %u, uncommitted_used_space: %u, high_index: %u",
                  instance(),
                  rowid.m_page_no,
                  rowid.m_page_idx,
@@ -1092,7 +1102,8 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
                  key.m_page_idx,
                  dst,
                  sz,
-                 diskPagePtr.p->uncommitted_used_space));
+                 diskPagePtr.p->uncommitted_used_space,
+                 ((Tup_varsize_page*)diskPagePtr.p)->get_high_index()));
     }
     else
     {
@@ -1121,16 +1132,20 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
                             logfile_group_id,
                             regOperPtr->m_undo_buffer_space,
                             var_disk);
-      DEB_DISK(("disk_page_undo_update: page(%u,%u,%u).%u, LSN(%u,%u),"
-                " gci: %u, uncommitted_used_space: %u",
+      DEB_DISK(("(%u)disk_page_undo_update: row(%u,%u), disk_row(%u,%u,%u),"
+                " LSN(%u,%u), gci: %u, uncommitted_used_space: %u,"
+                " high_index: %u",
                 instance(),
+                rowid.m_page_no,
+                rowid.m_page_idx,
                 key.m_file_no,
                 key.m_page_no,
                 key.m_page_idx,
                 Uint32(Uint64(lsn >> 32)),
                 Uint32(Uint64(lsn & 0xFFFFFFFF)),
                 gci_hi,
-                diskPagePtr.p->uncommitted_used_space));
+                diskPagePtr.p->uncommitted_used_space,
+                ((Tup_varsize_page*)diskPagePtr.p)->get_high_index()));
     }
 
     /**
@@ -1182,13 +1197,17 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
         {
           jam();
           vpagePtrP->shrink_entry(key.m_page_idx, new_sz);
-          DEB_DISK(("(%u) shrink_entry page(%u,%u).%u used: %u, free: %u",
+          DEB_DISK(("(%u) shrink_entry row(%u,%u), disk_row(%u,%u,%u) used: %u,"
+                    " free: %u, high_index: %u",
                     instance(),
+                    rowid.m_page_no,
+                    rowid.m_page_idx,
                     vpagePtrP->m_file_no,
                     vpagePtrP->m_page_no,
                     key.m_page_idx,
                     vpagePtrP->uncommitted_used_space,
-                    vpagePtrP->free_space));
+                    vpagePtrP->free_space,
+                    ((Tup_varsize_page*)vpagePtrP)->get_high_index()));
         }
         else if (new_sz > sz)
         {
@@ -1259,13 +1278,17 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
                                             0,
                                             change);
         regOperPtr->m_uncommitted_used_space = 0;
-        DEB_DISK(("(%u) grow_entry page(%u,%u).%u used: %u, free: %u",
+        DEB_DISK(("(%u) grow_entry row(%u,%u), disk_row(%u,%u,%u) used: %u,"
+                  " free: %u, high_index: %u",
                   instance(),
+                  rowid.m_page_no,
+                  rowid.m_page_idx,
                   vpagePtrP->m_file_no,
                   vpagePtrP->m_page_no,
                   key.m_page_idx,
                   vpagePtrP->uncommitted_used_space,
-                  vpagePtrP->free_space));
+                  vpagePtrP->free_space,
+                  ((Tup_varsize_page*)vpagePtrP)->get_high_index()));
       }
       memcpy(dst, disk_ptr, 4 * disk_fix_header_size);
       dst += disk_fix_header_size;

@@ -61,7 +61,7 @@
 extern EventLogger * g_eventLogger;
 
 #if defined(VM_TRACE) || defined(ERROR_INSERT)
-//#define DEBUG_DISK 1
+#define DEBUG_DISK 1
 //#define DEBUG_TUP_META 1
 //#define DEBUG_TUP_META_EXTRA 1
 //#define DEBUG_DROP_TAB 1
@@ -2405,6 +2405,11 @@ void Dbtup::drop_fragment_unmap_pages(Signal *signal, TablerecPtr tabPtr,
     req.m_callback.m_callbackData = pos;
     req.m_callback.m_callbackFunction =
         safe_cast(&Dbtup::drop_fragment_unmap_page_callback);
+
+    DEB_DISK(("(%u) COMMIT_REQ(Drop fragment) on disk_row(%u,%u)",
+      instance(),
+      req.m_page.m_file_no,
+      req.m_page.m_page_no));
 
     int flags = Page_cache_client::COMMIT_REQ;
     Page_cache_client pgman(this, c_pgman);
