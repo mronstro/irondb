@@ -43,7 +43,7 @@
 //#define DEBUG_EXTENT_BITS_HASH 1
 //#define DEBUG_FREE_EXTENT 1
 //#define DEBUG_UNDO 1
-//#define DEBUG_UNDO_LCP 1
+#define DEBUG_UNDO_LCP 1
 //#define DEBUG_UNDO_ALLOC 1
 //#define DEBUG_FREE_SPACE 1
 #endif
@@ -2429,8 +2429,8 @@ void Dbtup::disk_restart_undo(Signal *signal, Uint64 lsn, Uint32 type,
       }
       if (!isNdbMtLqh()) disk_restart_undo_next(signal);
 
-      DEB_UNDO_LCP(("(%u)UNDO LCP [%u,%u] tab(%u,%u)", instance(), lcpId,
-                    localLcpId, tableId, fragId));
+      DEB_UNDO_LCP(("(%u)UNDO LCP [%u,%u] tab(%u,%u), lsn: %llu",
+        instance(), lcpId, localLcpId, tableId, fragId, lsn));
       return;
     }
     case File_formats::Undofile::UNDO_TUP_ALLOC: {
@@ -2588,12 +2588,13 @@ void Dbtup::disk_restart_undo(Signal *signal, Uint64 lsn, Uint32 type,
     preq.m_callback.m_callbackData = cur_undo_record_page.i;
   }
 
-  DEB_DISK(("(%u) UNDO_REQ of type %u on disk_row(%u,%u,%u)",
+  DEB_DISK(("(%u) UNDO_REQ of type %u on disk_row(%u,%u,%u), lsn: %llu",
     instance(),
     f_undo.m_type,
     preq.m_page.m_file_no,
     preq.m_page.m_page_no,
-    preq.m_page.m_page_idx));
+    preq.m_page.m_page_idx,
+    f_undo.m_lsn));
 
   int flags = Page_cache_client::UNDO_REQ;
   Page_cache_client pgman(this, c_pgman);
@@ -2692,7 +2693,7 @@ void Dbtup::disk_restart_lcp_id(Uint32 tableId, Uint32 fragId, Uint32 lcpId,
 }
 
 void Dbtup::disk_restart_undo_lcp(Uint32 tableId, Uint32 fragId, Uint32 flag,
-                                  Uint32 lcpId, Uint32 localLcpId, Uint32 lsn) {
+                                  Uint32 lcpId, Uint32 localLcpId, Uint64 lsn) {
   Ptr<Tablerec> tabPtr;
   tabPtr.i = tableId;
   ptrCheckGuard(tabPtr, cnoOfTablerec, tablerec);
@@ -2707,10 +2708,10 @@ void Dbtup::disk_restart_undo_lcp(Uint32 tableId, Uint32 fragId, Uint32 flag,
       jam();
       DEB_UNDO_LCP(
           ("(%u)tab(%u,%u), lcp(%u,%u), flag: %u,"
-           " Fragment restore LCP(%u,%u), complete: %u",
+           " Fragment restore LCP(%u,%u), complete: %u, lsn: %llu",
            instance(), tableId, fragId, lcpId, localLcpId, flag,
            fragPtr.p->m_restore_lcp_id, fragPtr.p->m_restore_local_lcp_id,
-           fragPtr.p->m_undo_complete));
+           fragPtr.p->m_undo_complete, lsn));
       switch (flag) {
         case Fragrecord::UC_DROP: {
           jam();
@@ -2760,7 +2761,7 @@ void Dbtup::disk_restart_undo_lcp(Uint32 tableId, Uint32 fragId, Uint32 flag,
              * page information with the extent bits.
              */
             fragPtr.p->m_undo_complete = flag;
-            DEB_UNDO_LCP(("(%u)tab(%u,%u) lcp(%u,%u) -> done, lsn=%u",
+            DEB_UNDO_LCP(("(%u)tab(%u,%u) lcp(%u,%u) -> done, lsn=%llu",
                           instance(), tableId, fragId, lcpId, localLcpId, lsn));
           }
           return;

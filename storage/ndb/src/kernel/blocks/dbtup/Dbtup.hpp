@@ -4269,7 +4269,7 @@ public:
                              Uint32 flag,
                              Uint32 lcpId,
                              Uint32 localLcpId,
-                             Uint32 lsn);
+                             Uint64 lsn);
   void release_undo_record(Ptr<Apply_undo>&, bool);
 
   Uint32* prepare_undo_varpage(Var_page*, Uint32, Uint32);
