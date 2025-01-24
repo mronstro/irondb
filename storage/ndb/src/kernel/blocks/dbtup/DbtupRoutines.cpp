@@ -4160,8 +4160,8 @@ void Dbtup::update_lcp(KeyReqStruct *req_struct, const Uint32 *src,
 
 #ifdef DEBUG_DISK
   if (tabPtrP->m_bits & Tablerec::TR_DiskPart) {
-    Uint32 frag_page_id = req_struct->m_page_ptr.p->frag_page_id;
-    Uint32 page_idx = req_struct->operPtrP->m_tuple_location.m_page_idx;
+    Uint32 frag_page_id = req_struct->m_row_id.m_page_no;
+    Uint32 page_idx = req_struct->m_row_id.m_page_idx;
     Local_key lkey;
     memcpy(&lkey, ptr->get_disk_ref_ptr(tabPtrP), 8);
     g_eventLogger->info("(%u) LCP disk_row(%u,%u,%u), row(%u,%u)",
