@@ -8603,7 +8603,12 @@ Dbtup::nr_delete(Signal* signal, Uint32 senderData,
            ", set LCP_SKIP, bits: %x",
            instance(), fragPtr.p->fragTableId, fragPtr.p->fragmentId,
            key->m_page_no, key->m_page_idx, bits));
-      handle_lcp_keep_commit(key, &req_struct, &oprec, fragPtr.p, tablePtr.p);
+      handle_lcp_keep_commit(key,
+                             nullptr,
+                             &req_struct,
+                             &oprec,
+                             fragPtr.p,
+                             tablePtr.p);
       jamDebug();
       acquire_frag_mutex(fragPtr.p, key->m_page_no, jamBuffer());
       ptr->m_header_bits |= Tuple_header::LCP_SKIP;
@@ -8750,8 +8755,14 @@ Dbtup::nr_delete(Signal* signal, Uint32 senderData,
         ndbrequire("NOT YET IMPLEMENTED" == 0);
         break;
     }
-    disk_page_free(signal, tablePtr.p, fragPtr.p, &disk, *(PagePtr *)&disk_page,
-                   gci, key, sz);
+    disk_page_free(signal,
+                   tablePtr.p,
+                   fragPtr.p,
+                   disk,
+                   *(PagePtr *)&disk_page,
+                   gci,
+                   key,
+                   sz);
     return 0;
   }
 
@@ -8829,8 +8840,14 @@ void Dbtup::nr_delete_page_callback(Signal *signal, Uint32 userpointer,
       break;
   }
   jam();
-  disk_page_free(signal, tablePtr.p, fragPtr.p, &op.m_disk_ref, pagePtr,
-                 op.m_gci_hi, &op.m_row_id, sz);
+  disk_page_free(signal,
+                 tablePtr.p,
+                 fragPtr.p,
+                 op.m_disk_ref,
+                 pagePtr,
+                 op.m_gci_hi,
+                 &op.m_row_id,
+                 sz);
 
   c_lqh->nr_delete_complete(signal, &op);
   return;
@@ -8878,7 +8895,7 @@ void Dbtup::nr_delete_log_buffer_callback(Signal *signal, Uint32 userpointer,
   disk_page_free(signal,
                  tablePtr.p,
                  fragPtr.p,
-		 &op.m_disk_ref,
+                 op.m_disk_ref,
                  pagePtr,
                  op.m_gci_hi,
                  &op.m_row_id,

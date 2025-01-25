@@ -1950,17 +1950,17 @@ void
 Dbtup::disk_page_free(Signal *signal, 
 		      Tablerec *tabPtrP,
                       Fragrecord * fragPtrP,
-		      const Local_key* key,
+		      const Local_key& key,
                       PagePtr pagePtr,
                       Uint32 gci,
                       const Local_key *row_id,
                       Uint32 undo_len)
 {
   jam();
-  if (DBG_DISK) ndbout << " disk_page_free " << *key << endl;
+  if (DBG_DISK) ndbout << " disk_page_free " << key << endl;
 
-  Uint32 page_idx = key->m_page_idx;
-  jamLine(Uint16(key->m_page_idx));
+  Uint32 page_idx = key.m_page_idx;
+  jamLine(Uint16(key.m_page_idx));
   Uint32 logfile_group_id = fragPtrP->m_logfile_group_id;
   Disk_alloc_info &alloc = fragPtrP->m_disk_alloc_info;
   Uint32 old_free = pagePtr.p->free_space;
@@ -2011,9 +2011,9 @@ Dbtup::disk_page_free(Signal *signal,
                fragPtrP->fragmentId,
                row_id->m_page_no,
                row_id->m_page_idx,
-               key->m_file_no,
-               key->m_page_no,
-               key->m_page_idx,
+               key.m_file_no,
+               key.m_page_no,
+               key.m_page_idx,
                new_undo_len,
                undo_len,
                sz,
@@ -2299,7 +2299,7 @@ Dbtup::disk_page_undo_update(Signal *signal,
 Uint64
 Dbtup::disk_page_undo_free(Signal *signal,
                            Page* page,
-                           const Local_key* key,
+                           const Local_key& key,
 			   const Uint32* src,
                            Uint32 sz,
 			   Uint32 gci,
@@ -2310,8 +2310,8 @@ Dbtup::disk_page_undo_free(Signal *signal,
   jam();
 
   Disk_undo::Update_Free free;
-  free.m_page_no = key->m_page_no;
-  free.m_file_no_page_idx = key->m_file_no << 16 | key->m_page_idx;
+  free.m_page_no = key.m_page_no;
+  free.m_file_no_page_idx = key.m_file_no << 16 | key.m_page_idx;
   free.m_gci = gci;
 
   free.m_type_length =
@@ -2331,7 +2331,7 @@ Dbtup::disk_page_undo_free(Signal *signal,
   jamEntry();
   {
     Page_cache_client pgman(this, c_pgman);
-    pgman.update_lsn(signal, *key, lsn);
+    pgman.update_lsn(signal, key, lsn);
   }
   jamEntry();
   return lsn;
