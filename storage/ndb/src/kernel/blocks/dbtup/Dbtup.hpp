@@ -4383,11 +4383,15 @@ public:
                                    bool);
   void handle_lcp_keep(Signal *, FragrecordPtr, ScanOp *);
   void handle_lcp_keep_commit(const Local_key *,
-                              const Local_key *,
                               KeyReqStruct *,
                               Operationrec *,
                               Fragrecord *,
                               Tablerec *);
+  void handle_disk_reorg_lcp_keep(const Local_key *,
+                                  const Local_key *,
+                                  Operationrec *,
+                                  Fragrecord *,
+                                  Tablerec *);
 
   void setup_lcp_read_copy_tuple(KeyReqStruct *, Operationrec *, Tablerec *);
 

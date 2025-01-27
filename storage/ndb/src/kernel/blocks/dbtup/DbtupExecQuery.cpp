@@ -8604,7 +8604,6 @@ Dbtup::nr_delete(Signal* signal, Uint32 senderData,
            instance(), fragPtr.p->fragTableId, fragPtr.p->fragmentId,
            key->m_page_no, key->m_page_idx, bits));
       handle_lcp_keep_commit(key,
-                             nullptr,
                              &req_struct,
                              &oprec,
                              fragPtr.p,

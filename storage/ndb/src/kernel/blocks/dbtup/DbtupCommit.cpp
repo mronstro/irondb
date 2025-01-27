@@ -541,7 +541,6 @@ void Dbtup::dealloc_tuple(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
            instance(), regFragPtr->fragTableId, regFragPtr->fragmentId,
            rowid.m_page_no, rowid.m_page_idx, bits | extra_bits));
       handle_lcp_keep_commit(&rowid,
-                             nullptr,
                              req_struct,
                              regOperPtr,
                              regFragPtr,
@@ -629,8 +628,27 @@ void Dbtup::update_gci(Fragrecord *regFragPtr, Tablerec *regTabPtr,
   }
 }
 
+void Dbtup::handle_disk_reorg_lcp_keep(const Local_key *rowid,
+                                       const Local_key *disk_row,
+                                       Operationrec *opPtrP,
+                                       Fragrecord *regFragPtr,
+                                       Tablerec *regTabPtr) {
+  Uint32 *copytuple = get_copy_tuple_raw(&opPtrP->m_copy_tuple_location);
+  Tuple_header *dst = get_copy_tuple(copytuple);
+  memcpy(dst->get_disk_ref_ptr(regTabPtr), disk_row, sizeof(Local_key));
+  setChecksum(dst, regTabPtr);
+  /**
+   * Link it to lcp_keep list
+   */
+  insert_lcp_keep_list(regFragPtr, opPtrP->m_copy_tuple_location, copytuple,
+                       rowid);
+  /**
+   * And finally clear m_copy_tuple_location so that it won't be freed
+   */
+  opPtrP->m_copy_tuple_location.setNull();
+}
+
 void Dbtup::handle_lcp_keep_commit(const Local_key *rowid,
-                                   const Local_key *disk_row,
                                    KeyReqStruct *req_struct,
                                    Operationrec *opPtrP,
                                    Fragrecord *regFragPtr,
@@ -641,10 +659,6 @@ void Dbtup::handle_lcp_keep_commit(const Local_key *rowid,
   Uint32 *copytuple = get_copy_tuple_raw(&opPtrP->m_copy_tuple_location);
   Tuple_header *dst = get_copy_tuple(copytuple);
   Tuple_header *org = req_struct->m_tuple_ptr;
-  if (disk_row != nullptr) {
-    jam();
-    memcpy(dst->get_disk_ref_ptr(regTabPtr), disk_row, sizeof(Local_key));
-  }
   if (regTabPtr->need_expand(disk)) {
     jam();
     req_struct->fragPtrP = regFragPtr;
@@ -1388,18 +1402,17 @@ void Dbtup::commit_operation(Signal *signal, Uint32 gci_hi, Uint32 gci_lo,
       lcp_bits |= Tuple_header::LCP_SKIP;
       DEB_DISK(
           ("(%u)tab(%u,%u), row(%u,%u),"
-           " copy_disk_reorg_keep_lcp due to DISK_REORG",
+           " handle_disk_reorg_lcp_keep due to DISK_REORG",
            instance(),
            regFragPtr->fragTableId,
            regFragPtr->fragmentId,
            rowid.m_page_no,
            rowid.m_page_idx));
-      handle_lcp_keep_commit(&rowid,
-                             &old_disk_key,
-                             req_struct,
-                             regOperPtr,
-                             regFragPtr,
-                             regTabPtr);
+      handle_disk_reorg_lcp_keep(&rowid,
+                                 &old_disk_key,
+                                 regOperPtr,
+                                 regFragPtr,
+                                 regTabPtr);
     }
   }
   /**
