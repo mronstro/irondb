@@ -985,6 +985,7 @@ struct Operationrec {
     m_any_value(0),
     op_type(ZREAD),
     trans_state(Uint32(TRANS_DISCONNECTED)),
+    get_disk_page_flags(RNIL),
     original_op_type(ZREAD),
     ttl_ignore(0),
     ttl_only_expired(0)
@@ -1137,6 +1138,14 @@ struct Operationrec {
       Uint32 op_bit_fields;
     };
     OpStruct op_struct;
+
+    /*
+     * Temporary variable to cache the flags for retrieving the original disk page.
+     * This prevents issues in case of real-time break, where the callback
+     * function might lose the flags' value and pass incorrect values when retrieving
+     * the next extra disk page.
+     */
+    Uint32 get_disk_page_flags;
 
     /*
      * When refreshing a row, there are four scenarios
