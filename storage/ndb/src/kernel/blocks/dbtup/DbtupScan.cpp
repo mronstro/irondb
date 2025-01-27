@@ -2854,7 +2854,8 @@ void Dbtup::handle_lcp_keep(Signal *signal, FragrecordPtr fragPtr,
 }
 
 void Dbtup::remove_top_from_lcp_keep_list(Fragrecord *fragPtrP,
-                                          Uint32 *copytuple, Local_key tmp) {
+                                          Uint32 *copytuple,
+                                          Local_key tmp) {
   memcpy(&fragPtrP->m_lcp_keep_list_head, copytuple + 2, sizeof(Local_key));
 
   if (fragPtrP->m_lcp_keep_list_head.isNull()) {

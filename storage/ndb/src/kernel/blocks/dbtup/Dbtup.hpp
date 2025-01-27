@@ -4092,7 +4092,7 @@ public:
   void disk_page_free(Signal*,
 		      Tablerec*,
                       Fragrecord*,
-                      const Local_key*,
+                      const Local_key&,
                       PagePtr,
                       Uint32,
                       const Local_key*,
@@ -4124,7 +4124,7 @@ public:
   
   Uint64 disk_page_undo_free(Signal *signal,
                              Page*,
-                             const Local_key*,
+                             const Local_key&,
 			     const Uint32*,
                              Uint32 sz,
 			     Uint32 gci,
@@ -4260,6 +4260,9 @@ public:
   bool f_undo_done;
   Dbtup::Apply_undo f_undo;
 
+  Uint32 m_disk_reorg_keep_lcp_bufsize;
+  Uint32 m_disk_reorg_keep_lcp_buffer[MAX_TUPLE_SIZE_IN_WORDS + 4];
+
   // Error code when bailing out of scan
   Uint32 m_scan_error_code;
   void disk_restart_undo_next(Signal *, Uint32 applied = 0,
@@ -4269,7 +4272,7 @@ public:
                              Uint32 flag,
                              Uint32 lcpId,
                              Uint32 localLcpId,
-                             Uint32 lsn);
+                             Uint64 lsn);
   void release_undo_record(Ptr<Apply_undo>&, bool);
 
   Uint32* prepare_undo_varpage(Var_page*, Uint32, Uint32);
@@ -4304,7 +4307,8 @@ public:
 			Operationrec*,
                         Fragrecord*,
                         Tablerec*,
-                        Ptr<GlobalPage> diskPagePtr);
+                        Ptr<GlobalPage> diskPagePtr,
+                        KeyReqStruct*);
 
   void commit_refresh(Signal *, Uint32, Uint32, Tuple_header *, PagePtr,
                       KeyReqStruct *, Operationrec *, Fragrecord *, Tablerec *,
@@ -4378,8 +4382,16 @@ public:
                                    PagePtr,
                                    bool);
   void handle_lcp_keep(Signal *, FragrecordPtr, ScanOp *);
-  void handle_lcp_keep_commit(const Local_key *, KeyReqStruct *, Operationrec *,
-                              Fragrecord *, Tablerec *);
+  void handle_lcp_keep_commit(const Local_key *,
+                              KeyReqStruct *,
+                              Operationrec *,
+                              Fragrecord *,
+                              Tablerec *);
+  void handle_disk_reorg_lcp_keep(const Local_key *,
+                                  const Local_key *,
+                                  Operationrec *,
+                                  Fragrecord *,
+                                  Tablerec *);
 
   void setup_lcp_read_copy_tuple(KeyReqStruct *, Operationrec *, Tablerec *);
 
@@ -4638,6 +4650,8 @@ Dbtup::get_dd_info(PagePtr* pagePtr,
 
   if ((regTabPtr->m_bits & Tablerec::TR_UseVarSizedDiskData) != 0)
   {
+    jamDebug();
+    jamDataDebug(((Var_page*)tmp.p)->get_high_index());
     len = ((Var_page*)tmp.p)->get_entry_len(key.m_page_idx);
     return ((Var_page*)tmp.p)->get_ptr(key.m_page_idx);
   }

@@ -98,7 +98,7 @@ static NDB_TICKS startTime;
 //#define DEBUG_LCP_DEL_FILES 1
 //#define DEBUG_LCP 1
 //#define DEBUG_EMPTY_LCP 1
-//#define DEBUG_UNDO_LCP 1
+#define DEBUG_UNDO_LCP 1
 //#define DEBUG_LCP_ROW 1
 //#define DEBUG_LCP_DEL 1
 //#define DEBUG_EXTRA_LCP 1

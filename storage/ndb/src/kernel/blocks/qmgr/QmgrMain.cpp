@@ -10020,6 +10020,16 @@ void Qmgr::send_switch_multi_transporter(Signal *signal, NodeId node_id,
          " not needed since already setup",
          node_id));
     return;
+  } else if (!(nodePtr.p->phase == ZRUNNING &&
+               nodePtr.p->m_is_in_same_nodegroup &&
+               nodePtr.p->m_is_preparing_switch_trp &&
+               nodePtr.p->m_is_multi_trp_setup)) {
+    DEB_MULTI_TRP(
+        ("Retry of send SWITCH_MULTI_TRP_REQ to node %u"
+         " not needed since node isn't running or hasn't"
+         " been prepared again after a node failure",
+         node_id));
+    return;
   } else {
     jam();
     DEB_MULTI_TRP(("Retry of SWITCH_MULTI_TRP_REQ to node %u", node_id));

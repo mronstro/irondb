@@ -11532,6 +11532,8 @@ void Dblqh::continueACCKEYCONF(Signal *signal, Uint32 localKey1,
      * maybe need to handle this code path for TTL
      */
     jamDebug();
+    jamDataDebug(localKey1);
+    jamDataDebug(localKey2);
     ndbassert(!m_is_query_block);
     acckeyconf_load_diskpage(signal, tcConnectptr, regFragptr, localKey1,
                              localKey2);

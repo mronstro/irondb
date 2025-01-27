@@ -43,6 +43,16 @@
 
 #define JAM_FILE_ID 402
 
+#if (defined(VM_TRACE) || defined(ERROR_INSERT))
+#define DEBUG_DISK 1
+#endif
+
+#ifdef DEBUG_DISK
+#define DEB_DISK(arglist) do { g_eventLogger->info arglist ; } while (0)
+#else
+#define DEB_DISK(arglist) do { } while (0)
+#endif
+
 /*
  * Moz
  * Turn on MOZ_AGG_TUP_DEBUG to debug
@@ -4148,12 +4158,19 @@ void Dbtup::update_lcp(KeyReqStruct *req_struct, const Uint32 *src,
   }
   ptr->m_header_bits |= (varlen32) ? Tuple_header::VAR_PART : 0;
 
-#ifdef VM_TRACE
-  if (tabPtrP->m_bits & Tablerec::TR_DiskPart && false) {
+#ifdef DEBUG_DISK
+  if (tabPtrP->m_bits & Tablerec::TR_DiskPart) {
+    Uint32 frag_page_id = req_struct->m_row_id.m_page_no;
+    Uint32 page_idx = req_struct->m_row_id.m_page_idx;
     Local_key lkey;
     memcpy(&lkey, ptr->get_disk_ref_ptr(tabPtrP), 8);
-    g_eventLogger->info("LCP page(%u,%u).%u", lkey.m_file_no, lkey.m_page_no,
-                        lkey.m_page_idx);
+    g_eventLogger->info("(%u) LCP disk_row(%u,%u,%u), row(%u,%u)",
+      instance(),
+      lkey.m_file_no,
+      lkey.m_page_no,
+      lkey.m_page_idx,
+      frag_page_id,
+      page_idx);
   }
 #endif
   req_struct->changeMask.set();
