@@ -811,6 +811,8 @@ Dbtup::load_diskpage(Signal* signal,
       jamDebug();
       flags |= Page_cache_client::REF_REQ;
     }
+    // Save the current flags
+    regOperPtr->get_disk_page_flags = flags;
     Page_cache_client pgman(this, c_pgman);
     res = pgman.get_page(signal, req, flags);
   }
@@ -837,6 +839,8 @@ Dbtup::load_diskpage(Signal* signal,
     if (regOperPtr->op_struct.bit_field.m_load_extra_diskpage_on_commit)
     {
       jam();
+      // No need to set BUSY state on the extra disk page
+      flags &= ~Page_cache_client::REF_REQ;
       res = load_extra_diskpage(signal, opRec, flags);
     }
   }
@@ -934,7 +938,12 @@ Dbtup::disk_page_load_callback(Signal* signal, Uint32 opRec, Uint32 page_id)
   {
     jam();
     c_lqh->setup_key_pointers(operPtr.p->userpointer);
-    Uint32 flags = c_lqh->get_pgman_flags();
+    // Recover the saved flags
+    Uint32 flags = operPtr.p->get_disk_page_flags;
+    // No need to set BUSY state on the extra disk page
+    flags &= ~Page_cache_client::REF_REQ;
+    // Reset the saved flags
+    operPtr.p->get_disk_page_flags = RNIL;
     int extra_page_id = load_extra_diskpage(signal, opRec, flags);
     if (extra_page_id == 0)
     {
