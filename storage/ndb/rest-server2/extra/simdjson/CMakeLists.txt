@@ -1,5 +1,5 @@
 # This file is part of the RonDB REST API Server
-# Copyright (c) 2023 Hopsworks AB
+# Copyright (c) 2023,2025 Hopsworks AB
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@ if(NOT WITH_RDRS)
   RETURN()
 endif()
 
-SET(SIMDJSON_VERSION "3.10.1" CACHE INTERNAL "Simdjson Version" FORCE)
+SET(SIMDJSON_VERSION "3.12.0" CACHE INTERNAL "Simdjson Version" FORCE)
 SET(RDRS_SIMDJSON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/simdjson-${SIMDJSON_VERSION}  CACHE INTERNAL "Simdjson dir" FORCE)
 SET(RDRS_SIMDJSON_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/simdjson-${SIMDJSON_VERSION}  CACHE INTERNAL "Simdjson src dir" FORCE)
 SET(RDRS_SIMDJSON_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/simdjson-${SIMDJSON_VERSION}  CACHE INTERNAL "Simdjson binary dir" FORCE)
