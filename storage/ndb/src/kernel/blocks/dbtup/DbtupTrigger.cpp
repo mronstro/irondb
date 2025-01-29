@@ -1153,6 +1153,13 @@ Dbtup::fireDetachedTriggers(KeyReqStruct *req_struct,
     }
     ret = triggerList.next(trigPtr);
   }
+
+  /*
+   * req_struct->m_disk_page_ptr.i may be modified within excuteTrigger,
+   * We restore it to diskPagePtrI to ensure compatibility with the
+   * previous logic.
+   */
+  req_struct->m_disk_page_ptr.i = diskPagePtrI;
 }
 
 bool Dbtup::check_fire_trigger(const Fragrecord *fragPtrP,
@@ -1805,7 +1812,27 @@ bool Dbtup::readTriggerInfo(TupTriggerData *const trigPtr,
         get_copy_tuple(&req_struct->prevOpPtr.p->m_copy_tuple_location);
   }
 
-  if (regTabPtr->need_expand(disk)) prepare_read(req_struct, regTabPtr, disk);
+  if (regTabPtr->need_expand(disk)) {
+    /*
+     * If regOperPtr->m_disk_extra_callback_page is not RNIL,
+     * then req_struct->m_disk_page_ptr.i must have been assigned
+     * the same value in a previous step, meaning it points to the
+     * extra page. However, we actually need the original page, which
+     * is stored in m_disk_callback_page. Therefore, we update
+     * m_disk_page_ptr.i to m_disk_callback_page to ensure the
+     * following steps proceed correctly.
+     */
+    if (req_struct->m_disk_page_ptr.i != RNIL &&
+        regOperPtr->m_disk_extra_callback_page != RNIL) {
+
+      ndbrequire(req_struct->m_disk_page_ptr.i ==
+          regOperPtr->m_disk_extra_callback_page &&
+          regOperPtr->m_disk_callback_page != RNIL);
+
+      req_struct->m_disk_page_ptr.i = regOperPtr->m_disk_callback_page;
+    }
+    prepare_read(req_struct, regTabPtr, disk);
+  }
 
   // Read Primary key into the keyBuffer
   int ret = readAttributes(req_struct,
@@ -1909,7 +1936,27 @@ bool Dbtup::readTriggerInfo(TupTriggerData *const trigPtr,
           get_copy_tuple(&req_struct->prevOpPtr.p->m_copy_tuple_location);
     }
 
-    if (regTabPtr->need_expand(disk)) prepare_read(req_struct, regTabPtr, disk);
+    if (regTabPtr->need_expand(disk)) {
+      /*
+       * If regOperPtr->m_disk_extra_callback_page is not RNIL,
+       * we have already updated m_disk_page_ptr.i to
+       * regOperPtr->m_disk_callback_page above. Here, we add
+       * an assertion to double-check and ensure that prepare_read
+       * is correct.
+       *
+       * TODO
+       * However!!
+       * it seems that the previous implementation can be optimized
+       * to skip calling prepare_read here, as it has already been
+       * executed above.
+       */
+      if (req_struct->m_disk_page_ptr.i != RNIL &&
+          regOperPtr->m_disk_extra_callback_page != RNIL) {
+        ndbrequire(req_struct->m_disk_page_ptr.i ==
+            regOperPtr->m_disk_callback_page)
+      }
+      prepare_read(req_struct, regTabPtr, disk);
+    }
 
     /**
      * Check if an UPDATE:
