@@ -1334,6 +1334,8 @@ bool Dbtup::execTUPKEYREQ(Signal* signal,
   regOperPtr->fragmentPtr = prepare_fragptr.i;
   regOperPtr->prevActiveOp = RNIL;
   regOperPtr->nextActiveOp = RNIL;
+  regOperPtr->m_disk_callback_page = RNIL;
+  regOperPtr->m_disk_extra_callback_page = RNIL;
   req_struct.num_fired_triggers = 0;
   req_struct.no_exec_instructions = 0;
   req_struct.read_length = 0;

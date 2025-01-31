@@ -620,6 +620,8 @@ void Dbtup::execFIRE_TRIG_REQ(Signal *signal) {
   ndbassert(regOperPtr.p->op_struct.bit_field.m_reorg ==
             lastOperPtr.p->op_struct.bit_field.m_reorg);
 
+  regOperPtr.p->m_disk_callback_page = RNIL;
+  regOperPtr.p->m_disk_extra_callback_page = RNIL;
   /**
    * Deferred triggers should fire only once per primary key (per pass)
    *   regardless of no of DML on that primary key
