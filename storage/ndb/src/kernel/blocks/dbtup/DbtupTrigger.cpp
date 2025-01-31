@@ -1807,14 +1807,14 @@ bool Dbtup::readTriggerInfo(TupTriggerData *const trigPtr,
   //--------------------------------------------------------------------
   Tuple_header *save0 = req_struct->m_tuple_ptr;
   if (regOperPtr->op_type == ZDELETE && !regOperPtr->is_first_operation()) {
-    /*
-     * Dead code detected.
-     * `regOperPtr` cannot be a non-first operation
+    /**
+     * This branch can only happen for immediate triggers.
+     *
+     * For commits `regOperPtr` cannot be a non-first operation
      * since it is always set as the first in `execute_real_commit()`.
      * This means that for a `ZDELETE` operation, `req_struct->m_tuple_ptr`
      * is always the original one, so its header will never contain `DISK_INLINE`.
      */
-    ndbrequire(0);
     jam();
     req_struct->m_tuple_ptr =
         get_copy_tuple(&req_struct->prevOpPtr.p->m_copy_tuple_location);
