@@ -4524,6 +4524,7 @@ Dbtup::prepare_op_pointer(Uint32 opPtrI,
   prepare_oper_ptr.i = opPtrI;
   prepare_oper_ptr.p = opPtrP;
   opPtrP->m_disk_callback_page = RNIL;
+  opPtrP->m_disk_extra_callback_page = RNIL;
 }
 
 inline void
